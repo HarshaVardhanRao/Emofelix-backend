@@ -1,0 +1,18 @@
+# Django + DRF
+Django>=4.2
+djangorestframework>=3.14
+djangorestframework-simplejwt>=5.3
+social-auth-app-django>=5.4.0
+python-decouple>=3.8
+
+# FastAPI stack
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Common & async utilities
+python-multipart>=0.0.9
+aiofiles>=23.2
+Jinja2>=3.1
+
+# CORS for FastAPI
+fastapi[all]>=0.110
