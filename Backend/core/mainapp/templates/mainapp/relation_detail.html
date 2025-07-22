@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ object.name }}{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg">
+    <h1 class="text-3xl font-bold text-gray-800 mb-4">{{ object.name }}</h1>
+    <div class="space-y-2">
+        <p><strong>Relation Type:</strong> {{ object.relation_type }}</p>
+        <p><strong>Emotion Model:</strong> {{ object.emotion_model }}</p>
+        <p><strong>Voice Model:</strong> {{ object.voice_model }}</p>
+    </div>
+    <div class="mt-6">
+        <a href="{% url 'relation-list' %}" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700">Back to List</a>
+    </div>
+</div>
+{% endblock %}

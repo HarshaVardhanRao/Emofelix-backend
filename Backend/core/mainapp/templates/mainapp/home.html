@@ -1,0 +1,23 @@
+<!-- mainapp/templates/mainapp/home.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 800px; margin: auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        p { color: #555; }
+        a { color: #d9534f; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome, {{ user.username }}!</h1>
+        <p>You have successfully logged in.</p>
+        <p><a href="{% url 'logout' %}">Logout</a></p>
+    </div>
+</body>
+</html>

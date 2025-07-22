@@ -1,0 +1,129 @@
+<!-- mainapp/templates/mainapp/chat.html -->
+<!-- Page 3: Chat Interface -->
+{% extends 'base.html' %}
+{% block title %}Chat with {{ relation.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-lg max-w-2xl mx-auto flex flex-col" style="height: 70vh;">
+    <!-- Chat Header -->
+    <div class="p-4 border-b flex justify-between items-center flex-shrink-0">
+        <h1 class="text-xl font-bold">Chat with {{ relation.name }}</h1>
+        <a href="{% url 'home' %}" class="text-sm text-red-500 hover:underline">End Chat</a>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="chat-messages" class="p-4 flex-grow overflow-y-auto">
+        <!-- Initial message and AI response will be loaded here -->
+    </div>
+
+    <!-- Message Input Form -->
+    <div class="p-4 border-t bg-white flex-shrink-0">
+        <form id="chat-form" class="flex items-center space-x-2">
+            <input type="text" id="chat-message-input" class="w-full border border-gray-300 rounded-full py-2 px-4" placeholder="Type your message..." autocomplete="off">
+            <button type="submit" class="bg-blue-500 text-white rounded-full p-3 hover:bg-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const messagesContainer = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('chat-message-input');
+    
+    // Data passed from the Django view
+    const initialMessage = "{{ initial_message|escapejs }}";
+    const relationType = "{{ relation.relation_type|escapejs }}";
+    const authToken = "{{ auth_token }}";
+    const userId = {{ user_id }};
+
+    /**
+     * Appends a message to the chat container.
+     * @param {string} text - The message content.
+     * @param {string} sender - 'user' or 'ai'.
+     * @returns {HTMLElement} - The span element containing the message text.
+     */
+    const appendMessage = (text, sender) => {
+        const messageElem = document.createElement('div');
+        messageElem.className = `my-2 flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+        
+        const span = document.createElement('span');
+        span.className = `py-2 px-4 rounded-2xl inline-block max-w-md ${sender === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`;
+        span.textContent = text;
+        
+        messageElem.appendChild(span);
+        messagesContainer.appendChild(messageElem);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        return span;
+    };
+
+    /**
+     * Calls the FastAPI streaming endpoint and updates the UI with the response.
+     * @param {string} message - The user's message to send to the API.
+     */
+    const streamResponse = async (message) => {
+        const aiSpan = appendMessage("", 'ai'); // Create a placeholder for the AI response
+        aiSpan.innerHTML = '<span class="animate-pulse">...</span>'; // Add a typing indicator
+
+        try {
+            const response = await fetch('http://127.0.0.1:8001/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Token ${authToken}` },
+                body: JSON.stringify({ user_id: userId, message: message, relation_type: relationType })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponseText = '';
+            
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\\n\\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.substring(6);
+                        if (data) {
+                           fullResponseText += data + ' ';
+                           aiSpan.textContent = fullResponseText; // Update the content
+                           messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Streaming error:', error);
+            aiSpan.textContent = 'Sorry, an error occurred while connecting to the AI.';
+        }
+    };
+
+    // --- Main Logic ---
+
+    // 1. Handle the initial message from the previous page
+    if (initialMessage) {
+        appendMessage(initialMessage, 'user');
+        streamResponse(initialMessage);
+    }
+
+    // 2. Handle all subsequent messages from the chat form
+    chatForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const message = messageInput.value;
+        if (!message.trim()) return;
+        
+        appendMessage(message, 'user');
+        messageInput.value = '';
+        streamResponse(message);
+    });
+});
+</script>
+{% endblock %}

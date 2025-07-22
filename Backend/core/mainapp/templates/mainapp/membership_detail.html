@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}My Membership{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg max-w-2xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">My Membership</h1>
+        <a href="{% url 'membership-update' %}" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Change Plan</a>
+    </div>
+    <div class="space-y-3 text-gray-700">
+        <p><strong>User:</strong> {{ object.user.username }}</p>
+        <p><strong>Current Plan:</strong> <span class="font-semibold text-indigo-600">{{ object.get_plan_display }}</span></p>
+        <p><strong>Start Date:</strong> {{ object.start_date|date:"F j, Y" }}</p>
+        <p><strong>Expiry Date:</strong> {{ object.expiry_date|date:"F j, Y"|default:"N/A" }}</p>
+    </div>
+    <div class="mt-8">
+        <a href="{% url 'home' %}" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700">Back to Dashboard</a>
+    </div>
+</div>

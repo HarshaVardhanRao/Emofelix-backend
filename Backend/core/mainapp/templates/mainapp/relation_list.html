@@ -1,0 +1,39 @@
+<!-- mainapp/templates/mainapp/relation_list.html -->
+{% extends 'base.html' %}
+{% block title %}My Relations{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">My Relations</h1>
+        <a href="{% url 'relation-create' %}" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">Add New Relation</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="py-3 px-4 text-left">Name</th>
+                    <th class="py-3 px-4 text-left">Type</th>
+                    <th class="py-3 px-4 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for relation in relations %}
+                <tr class="border-b">
+                    <td class="py-3 px-4">{{ relation.name }}</td>
+                    <td class="py-3 px-4">{{ relation.relation_type }}</td>
+                    <td class="py-3 px-4">
+                        <a href="{% url 'relation-detail' relation.pk %}" class="text-indigo-600 hover:underline mr-4">View</a>
+                        <a href="{% url 'relation-update' relation.pk %}" class="text-blue-600 hover:underline mr-4">Edit</a>
+                        <a href="{% url 'relation-delete' relation.pk %}" class="text-red-600 hover:underline">Delete</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="py-3 px-4 text-center text-gray-500">No relations found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

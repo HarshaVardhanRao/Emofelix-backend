@@ -1,0 +1,24 @@
+<!-- mainapp/templates/mainapp/callhistory_detail.html -->
+{% extends 'base.html' %}
+{% block title %}Call Details{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg">
+    <h1 class="text-3xl font-bold text-gray-800 mb-4">Call Details</h1>
+    <div class="space-y-3 text-gray-700">
+        <p><strong>User:</strong> {{ object.user.username }}</p>
+        <p><strong>Relation:</strong> {{ object.call.relation }}</p>
+        <p><strong>Direction:</strong> {{ object.call.get_direction_display }}</p>
+        <p><strong>Timestamp:</strong> {{ object.call.timestamp|date:"F j, Y, P" }}</p>
+        <p><strong>Duration:</strong> {{ object.duration_seconds }} seconds</p>
+        <p><strong>Emotion Detected:</strong> {{ object.call.emotion_detected|default:"N/A" }}</p>
+        <p><strong>Voice Model Used:</strong> {{ object.call.voice_model_used }}</p>
+        <p><strong>Feedback:</strong></p>
+        <div class="p-4 bg-gray-50 rounded-md border">
+            <p>{{ object.feedback|default:"No feedback provided." }}</p>
+        </div>
+    </div>
+    <div class="mt-6">
+        <a href="{% url 'callhistory-list' %}" class="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700">Back to History</a>
+    </div>
+</div>
+{% endblock %}

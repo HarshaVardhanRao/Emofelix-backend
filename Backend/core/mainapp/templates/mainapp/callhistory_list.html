@@ -1,0 +1,39 @@
+<!-- mainapp/templates/mainapp/callhistory_list.html -->
+{% extends 'base.html' %}
+{% block title %}Call History{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Call History</h1>
+        <a href="{% url 'home' %}" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Back to Dashboard</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white">
+            <thead class="bg-gray-200">
+                <tr>
+                    <th class="py-3 px-4 text-left">Call Relation</th>
+                    <th class="py-3 px-4 text-left">Timestamp</th>
+                    <th class="py-3 px-4 text-left">Duration (s)</th>
+                    <th class="py-3 px-4 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for history in call_histories %}
+                <tr class="border-b">
+                    <td class="py-3 px-4">{{ history.call.relation }}</td>
+                    <td class="py-3 px-4">{{ history.created_at|date:"Y-m-d H:i" }}</td>
+                    <td class="py-3 px-4">{{ history.duration_seconds }}</td>
+                    <td class="py-3 px-4">
+                        <a href="{% url 'callhistory-detail' history.pk %}" class="text-indigo-600 hover:underline">View Details</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="py-3 px-4 text-center text-gray-500">No call history found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+<!-- mainapp/templates/mainapp/membership_form.html -->
+{% extends 'base.html' %}
+{% block title %}Change Membership Plan{% endblock %}
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow-lg max-w-lg mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Change Membership Plan</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="space-y-4">
+            {{ form.as_p }}
+        </div>
+        <div class="mt-6">
+            <button type="submit" class="w-full px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
