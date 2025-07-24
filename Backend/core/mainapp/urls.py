@@ -28,4 +28,5 @@ urlpatterns = [
 
     # API URLs
     path('api/', include(router.urls)),
+    path('api/auth/google-login/', views.GoogleLoginView.as_view(), name='google-login'),
 ]

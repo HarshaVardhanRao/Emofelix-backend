@@ -7,6 +7,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from django.conf import settings
+from .models import CustomUser
 
 from .models import (
     CustomUser, Call, CallHistory, CallPreference, ChatPreference,
@@ -142,3 +148,49 @@ class CallViewSet(viewsets.ModelViewSet):
     serializer_class = CallSerializer
 
 # ... (other viewsets remain the same)
+
+
+class GoogleLoginView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        """
+            {
+                "id_token":"'My-fake-token'",
+                "username": "email@gmail.com",
+                "first_name": "'testname'",
+                "last_name": "'family_name'"
+            }
+        """
+        google_token = request.data.get('id_token')
+        if not google_token:
+            return Response({'error': 'ID token is required'}, status=400)
+
+        try:
+            # Verify the token with Google
+            idinfo = id_token.verify_oauth2_token(google_token, requests.Request(), settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY)
+
+            # Get or create the user
+            email = idinfo['email']
+            user, created = CustomUser.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email,
+                    'first_name': idinfo.get('given_name', ''),
+                    'last_name': idinfo.get('family_name', ''),
+                }
+            )
+
+            # Get the Django REST Framework token
+            drf_token, _ = Token.objects.get_or_create(user=user)
+
+            return Response({
+                'token': drf_token.key,
+                'user_id': user.id,
+                'email': user.email,
+            })
+
+        except ValueError:
+            # Invalid token
+            return Response({'error': 'Invalid Google token'}, status=400)
