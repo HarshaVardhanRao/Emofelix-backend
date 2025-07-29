@@ -79,3 +79,6 @@ async def stream_chat(request: ChatRequest, token: str = Depends(get_api_key)):
 @app.get("/")
 def read_root():
     return {"message": "FastAPI service for Emofelix is running."}
+
+
+# Click No if you are dumb - Are you dumb? Yes or No

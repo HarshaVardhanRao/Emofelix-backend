@@ -10,7 +10,18 @@ class CustomUser(AbstractUser):
     # You can add additional fields here if needed in the future
     def __str__(self):
         return self.username
+# -------------------------------
+# Relations
+# -------------------------------
+class Relation(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="relations")
+    name = models.CharField(max_length=100)
+    relation_type = models.CharField(max_length=50)  # e.g. "Mother", "Friend"
+    emotion_model = models.CharField(max_length=100)
+    voice_model = models.CharField(max_length=100)
 
+    def __str__(self):
+        return f"{self.name} ({self.relation_type})"
 # -------------------------------
 # Calls and Preferences
 # -------------------------------
@@ -18,7 +29,7 @@ class Call(models.Model):
     DIRECTION = (("IN", "Incoming"), ("OUT", "Outgoing"))
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    relation = models.CharField(max_length=50)
+    relation = models.ForeignKey(Relation, on_delete=models.CASCADE, related_name="calls")  
     timestamp = models.DateTimeField(auto_now_add=True)
     emotion_detected = models.CharField(max_length=50, blank=True)
     voice_model_used = models.CharField(max_length=100)
@@ -52,18 +63,7 @@ class ChatPreference(models.Model):
     voice_type = models.CharField(max_length=100)    # e.g. "Warm, Friendly"
 
 
-# -------------------------------
-# Relations
-# -------------------------------
-class Relation(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="relations")
-    name = models.CharField(max_length=100)
-    relation_type = models.CharField(max_length=50)  # e.g. "Mother", "Friend"
-    emotion_model = models.CharField(max_length=100)
-    voice_model = models.CharField(max_length=100)
 
-    def __str__(self):
-        return f"{self.name} ({self.relation_type})"
 
 
 # -------------------------------

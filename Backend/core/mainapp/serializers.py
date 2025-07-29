@@ -1,46 +1,52 @@
 # mainapp/serializers.py
-
 from rest_framework import serializers
-from .models import (
-    CustomUser, Call, CallHistory, CallPreference, ChatPreference,
-    Relation, Notification, PaymentDetail, PaymentHistory, Membership,
-    ReferralProgram
-)
+from .models import *
+from django.contrib.auth import authenticate
 
-class CustomUserSerializer(serializers.ModelSerializer):
+class UserRegisterSerializer(serializers.ModelSerializer):
+    """Serializer for user registration."""
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        fields = ('id', 'email', 'password', 'first_name', 'last_name')
+        extra_kwargs = {'password': {'write_only': True}}
 
-class CallSerializer(serializers.ModelSerializer):
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(
+            username=validated_data['email'], # Use email as username
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
+        )
+        return user
+
+class ProfileSerializer(serializers.ModelSerializer):
+    """Serializer for retrieving and updating user profile."""
     class Meta:
-        model = Call
-        fields = '__all__'
+        model = CustomUser
+        fields = ('id', 'email', 'first_name', 'last_name')
+        read_only_fields = ('email', 'id') # Don't allow email change via this endpoint
 
-class CallHistorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CallHistory
-        fields = '__all__'
-
-class CallPreferenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CallPreference
-        fields = '__all__'
-
-class ChatPreferenceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChatPreference
-        fields = '__all__'
-
+# Keep your existing serializers and add the above
 class RelationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Relation
         fields = '__all__'
+        read_only_fields = ('user',) # User should be set from request context
 
 class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = '__all__'
+
+class CallHistorySerializer(serializers.ModelSerializer):
+    # Add relation details to the history output
+    relation_name = serializers.CharField(source='call.relation.name', read_only=True)
+
+    class Meta:
+        model = CallHistory
+        fields = ('id', 'call', 'duration_seconds', 'feedback', 'created_at', 'relation_name')
+
 
 class PaymentDetailSerializer(serializers.ModelSerializer):
     class Meta:
