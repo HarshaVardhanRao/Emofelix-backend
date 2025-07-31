@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles, Heart } from 'lucide-react';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -36,7 +36,8 @@ const Login = () => {
             } else {
                 setError(result.error);
             }
-        } catch (err) {
+        } catch (error) {
+            console.error('Login error:', error);
             setError('An unexpected error occurred. Please try again.');
         } finally {
             setLoading(false);
@@ -44,36 +45,58 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-violet-800 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+            {/* Animated Background Elements */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(15)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute w-3 h-3 bg-neon-blue rounded-full animate-float-bounce opacity-40"
+                        style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 6}s`,
+                            animationDuration: `${4 + Math.random() * 4}s`
+                        }}
+                    ></div>
+                ))}
+            </div>
+
+            <div className="max-w-md w-full space-y-8 relative z-10">
+                <div className="glass-card rounded-3xl p-8 shadow-neon-lg animate-bounce-in">
                     {/* Header */}
                     <div className="text-center">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                            Welcome Back
+                        <div className="flex justify-center mb-4">
+                            <div className="relative">
+                                <Heart className="h-16 w-16 text-neon-pink animate-pulse-glow" />
+                                <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-neon-blue animate-ping" />
+                            </div>
+                        </div>
+                        <h2 className="text-4xl font-black holo-text mb-4">
+                            Welcome Back! 🎉
                         </h2>
-                        <p className="text-gray-600">
-                            Sign in to continue your emotional journey
+                        <p className="text-gray-200 text-lg">
+                            Sign in to continue your <span className="text-neon-blue font-semibold">emotional journey</span> ✨
                         </p>
                     </div>
 
                     {/* Form */}
                     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                <span className="text-red-700 text-sm">{error}</span>
+                            <div className="glass-card rounded-xl p-4 flex items-center space-x-3 border border-red-500/30 shake-error">
+                                <AlertCircle className="h-5 w-5 text-red-400 animate-pulse" />
+                                <span className="text-red-300 text-sm font-medium">{error}</span>
                             </div>
                         )}
 
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {/* Email Field */}
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email Address
+                            <div className="animate-slide-up">
+                                <label htmlFor="email" className="block text-sm font-semibold text-white mb-2">
+                                    📧 Email Address
                                 </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neon-blue group-focus-within:text-neon-pink transition-colors" />
                                     <input
                                         id="email"
                                         name="email"
@@ -81,19 +104,19 @@ const Login = () => {
                                         required
                                         value={formData.email}
                                         onChange={handleChange}
-                                        className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                        className="input-glass w-full pl-12 pr-4 py-4 text-white placeholder-gray-300 focus:scale-105 transition-all duration-300"
                                         placeholder="Enter your email"
                                     />
                                 </div>
                             </div>
 
                             {/* Password Field */}
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password
+                            <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                                <label htmlFor="password" className="block text-sm font-semibold text-white mb-2">
+                                    🔒 Password
                                 </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neon-blue group-focus-within:text-neon-pink transition-colors" />
                                     <input
                                         id="password"
                                         name="password"
@@ -101,13 +124,13 @@ const Login = () => {
                                         required
                                         value={formData.password}
                                         onChange={handleChange}
-                                        className="pl-10 pr-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                                        className="input-glass w-full pl-12 pr-12 py-4 text-white placeholder-gray-300 focus:scale-105 transition-all duration-300"
                                         placeholder="Enter your password"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-neon-blue transition-colors wiggle-hover"
                                     >
                                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                     </button>
@@ -116,12 +139,12 @@ const Login = () => {
                         </div>
 
                         {/* Forgot Password Link */}
-                        <div className="text-right">
+                        <div className="text-right animate-slide-up" style={{ animationDelay: '0.2s' }}>
                             <Link
                                 to="/forgot-password"
-                                className="text-sm text-primary-600 hover:text-primary-700 transition-colors"
+                                className="text-sm text-neon-blue hover:text-neon-pink transition-colors font-medium wiggle-hover"
                             >
-                                Forgot your password?
+                                🤔 Forgot your password?
                             </Link>
                         </div>
 
@@ -129,66 +152,81 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full btn-primary-glass py-4 px-6 rounded-2xl font-bold text-lg hover:scale-105 transition-all duration-300 wiggle-hover animate-slide-up"
+                            style={{ animationDelay: '0.3s' }}
                         >
                             {loading ? (
                                 <div className="flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                    Signing In...
+                                    <div className="loading-glass mr-3"></div>
+                                    ⚡ Signing In...
                                 </div>
                             ) : (
-                                'Sign In'
+                                <span className="flex items-center justify-center">
+                                    🚀 Sign In
+                                </span>
                             )}
                         </button>
 
                         {/* Divider */}
-                        <div className="relative my-6">
+                        <div className="relative my-8 animate-slide-up" style={{ animationDelay: '0.4s' }}>
                             <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300" />
+                                <div className="w-full border-t border-white/20" />
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                                <span className="px-4 glass text-gray-300 rounded-full font-medium">✨ Or continue with</span>
                             </div>
                         </div>
 
                         {/* Google Sign In */}
                         <button
                             type="button"
-                            className="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors flex items-center justify-center"
+                            className="w-full glass-card py-4 px-6 rounded-2xl font-semibold text-white hover:scale-105 transition-all duration-300 flex items-center justify-center group wiggle-hover animate-slide-up"
+                            style={{ animationDelay: '0.5s' }}
                         >
                             <img
                                 src="https://developers.google.com/identity/images/g-logo.png"
                                 alt="Google"
-                                className="w-5 h-5 mr-2"
+                                className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform"
                             />
-                            Sign in with Google
+                            🌟 Sign in with Google
                         </button>
 
                         {/* Sign Up Link */}
-                        <div className="text-center">
-                            <span className="text-gray-600">Don't have an account? </span>
+                        <div className="text-center animate-slide-up" style={{ animationDelay: '0.6s' }}>
+                            <span className="text-gray-300">Don't have an account? </span>
                             <Link
                                 to="/register"
-                                className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                                className="text-neon-blue hover:text-neon-pink font-bold transition-colors wiggle-hover"
                             >
-                                Sign up here
+                                🎯 Sign up here
                             </Link>
                         </div>
                     </form>
                 </div>
 
                 {/* Additional Info */}
-                <div className="text-center">
-                    <p className="text-sm text-gray-500">
-                        By signing in, you agree to our{' '}
-                        <Link to="/terms" className="text-primary-600 hover:text-primary-700">
-                            Terms of Service
-                        </Link>{' '}
-                        and{' '}
-                        <Link to="/privacy" className="text-primary-600 hover:text-primary-700">
-                            Privacy Policy
-                        </Link>
-                    </p>
+                <div className="text-center animate-fade-in" style={{ animationDelay: '0.8s' }}>
+                    <div className="glass rounded-2xl p-4">
+                        <p className="text-sm text-gray-300">
+                            By signing in, you agree to our{' '}
+                            <Link to="/terms" className="text-neon-blue hover:text-neon-pink transition-colors">
+                                Terms of Service
+                            </Link>{' '}
+                            and{' '}
+                            <Link to="/privacy" className="text-neon-blue hover:text-neon-pink transition-colors">
+                                Privacy Policy
+                            </Link>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Fun GIF */}
+                <div className="text-center animate-bounce-in" style={{ animationDelay: '1s' }}>
+                    <img
+                        src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif"
+                        alt="Welcome back"
+                        className="w-24 h-24 mx-auto rounded-2xl glass-card p-2 hover:scale-110 transition-transform cursor-pointer"
+                    />
                 </div>
             </div>
         </div>

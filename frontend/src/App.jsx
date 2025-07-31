@@ -4,11 +4,21 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Relations from './pages/Relations';
+import MyLovedOnes from './pages/MyLovedOnes';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
+
+// Home Route Component (redirect authenticated users to loved ones)
+const HomeRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  return isAuthenticated ? <Navigate to="/loved-ones" replace /> : <Home />;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -29,7 +39,7 @@ const PublicRoute = ({ children }) => {
     return <LoadingSpinner />;
   }
 
-  return isAuthenticated ? <Navigate to="/dashboard" /> : children;
+  return isAuthenticated ? <Navigate to="/loved-ones" /> : children;
 };
 
 function AppContent() {
@@ -40,59 +50,56 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800">
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/relations"
-          element={
-            <ProtectedRoute>
-              <Relations />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/chat/:relationId"
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <main className="pt-16">
+        <Routes>
+          <Route path="/" element={<HomeRoute />} />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/loved-ones"
+            element={
+              <ProtectedRoute>
+                <MyLovedOnes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat/:relationId"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          {/* Redirect old routes */}
+          <Route path="/dashboard" element={<Navigate to="/loved-ones" replace />} />
+          <Route path="/relations" element={<Navigate to="/loved-ones" replace />} />
+        </Routes>
+      </main>
     </div>
   );
 }
