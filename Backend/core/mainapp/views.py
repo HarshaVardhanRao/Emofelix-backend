@@ -79,7 +79,7 @@ def login_view(request):
         else:
             # Add error message handling for the template
             pass
-    return render(request, 'mainapp/login.html')
+    return render(request, 'mainapp/loginfile.html')
 
 # Note: The standard LogoutView is imported directly in urls.py, which is fine.
 
@@ -127,7 +127,7 @@ class ApiRegisterView(generics.CreateAPIView):
     """API Endpoint for standard email & password registration."""
     queryset = CustomUser.objects.all()
     serializer_class = UserRegisterSerializer
-    permission_classes = [AllowAny] # Anyone can register
+    permission_classes = [AllowAny]     # Anyone can register
 
 class ApiLoginView(ObtainAuthToken):
     """API Endpoint for standard email & password login. Returns auth token."""

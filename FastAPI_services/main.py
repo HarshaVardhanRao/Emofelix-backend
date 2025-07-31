@@ -13,6 +13,8 @@ app = FastAPI()
 # This allows your Django app (running on http://127.0.0.1:8000)
 # to make requests to this FastAPI server.
 origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
 ]
