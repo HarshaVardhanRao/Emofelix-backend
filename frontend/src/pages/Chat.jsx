@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
@@ -7,11 +7,15 @@ import {
     ArrowLeft,
     Mic,
     MicOff,
-    Heart
+    Heart,
+    Phone,
+    Video,
+    PhoneOff
 } from 'lucide-react';
 
 const Chat = () => {
     const { relationId } = useParams();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user, token } = useAuth();
     const [relation, setRelation] = useState(null);
@@ -20,9 +24,11 @@ const Chat = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [callPreferences, setCallPreferences] = useState(null);
+    const [isInCall, setIsInCall] = useState(false);
     const messagesEndRef = useRef(null);
 
-    const fetchRelation = async () => {
+    const fetchRelation = useCallback(async () => {
         try {
             const response = await axios.get(`http://127.0.0.1:8000/api/relations/${relationId}/`);
             setRelation(response.data);
@@ -30,23 +36,70 @@ const Chat = () => {
             console.error('Failed to fetch relation:', error);
             navigate('/loved-ones');
         }
+    }, [relationId, navigate]);
+
+    const getMoodBasedMessage = (mood, name) => {
+        const moodMessages = [
+            `Oh my dear ${name}, I can sense you're feeling quite low today. I'm here for you, and we'll get through this together. 🤗💕`,
+            `I notice you're having a tough time, ${name}. Please know that I love you and I'm here to listen. 😢💝`,
+            `${name}, it seems like today is challenging for you. Let's talk about what's on your heart. 🫂`,
+            `Hi ${name}, I can see you're feeling neutral today. That's perfectly okay - I'm here to chat whenever you're ready. 😊`,
+            `Hello ${name}! You seem to be doing okay today. I'm happy to spend this time with you. 💖`,
+            `Hi there, ${name}! I'm glad to see you're feeling good today. What would you like to talk about? 😊💕`,
+            `${name}! I can feel your positive energy today! I'm so happy to chat with you. 😄✨`,
+            `Wonderful to see you so happy, ${name}! Your joy brings warmth to my heart. Let's have a great conversation! 🤩💫`,
+            `${name}, you're absolutely glowing with excitement today! I love seeing you this way. Tell me what's making you so happy! 🥰🌟`,
+            `My dearest ${name}, you're radiating such beautiful joy today! I'm overjoyed to spend this time with you. 💕✨`
+        ];
+        return moodMessages[mood] || moodMessages[5];
+    };
+
+    const handleEndCall = () => {
+        setIsInCall(false);
+        navigate('/loved-ones');
     };
 
     useEffect(() => {
-        fetchRelation();
-        // Add some welcome messages
-        setMessages([
-            {
-                id: 1,
-                content: "Hello my dear! I'm so happy to see you today. How are you feeling? 💝",
-                sender: 'ai',
-                timestamp: new Date().toISOString()
-            }
-        ]);
-        setLoading(false);
-    }, [relationId]);
+        const initializeChat = async () => {
+            await fetchRelation();
 
-    useEffect(() => {
+            // Get call preferences from sessionStorage
+            const savedPreferences = sessionStorage.getItem('callPreferences');
+            if (savedPreferences) {
+                const preferences = JSON.parse(savedPreferences);
+                setCallPreferences(preferences);
+                setIsInCall(true);
+
+                // Generate personalized welcome message based on mood and preferences
+                const moodMessage = getMoodBasedMessage(preferences.mood, 'dear');
+                setMessages([
+                    {
+                        id: 1,
+                        content: moodMessage,
+                        sender: 'ai',
+                        timestamp: new Date().toISOString()
+                    }
+                ]);
+
+                // Clear preferences from storage
+                sessionStorage.removeItem('callPreferences');
+            } else {
+                // Default welcome message
+                setMessages([
+                    {
+                        id: 1,
+                        content: "Hello my dear! I'm so happy to see you today. How are you feeling? 💝",
+                        sender: 'ai',
+                        timestamp: new Date().toISOString()
+                    }
+                ]);
+            }
+
+            setLoading(false);
+        };
+
+        initializeChat();
+    }, [relationId, fetchRelation]); useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
@@ -221,7 +274,7 @@ const Chat = () => {
             </div>
 
             {/* Chat Header */}
-            <div className="relative z-10 glass-card border-b-2 border-love-400/30 px-6 py-4">
+            <div className="relative z-50 glass-card border-b-2 border-love-400/30 px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                         <button
@@ -252,7 +305,6 @@ const Chat = () => {
                     </div>
                 </div>
             </div>
-
             {/* Chat Messages */}
             <div className="relative z-10 flex-1 overflow-y-auto p-6 space-y-6">
                 {messages.map((message) => (

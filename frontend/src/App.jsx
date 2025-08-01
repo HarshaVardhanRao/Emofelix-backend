@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyLovedOnes from './pages/MyLovedOnes';
+import CallSetup from './pages/CallSetup';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -76,6 +77,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <MyLovedOnes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/call-setup/:relationId"
+            element={
+              <ProtectedRoute>
+                <CallSetup />
               </ProtectedRoute>
             }
           />

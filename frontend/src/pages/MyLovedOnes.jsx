@@ -243,7 +243,7 @@ const MyLovedOnes = () => {
 
                                     {/* Chat Button */}
                                     <Link
-                                        to={`/chat/${relation.id}`}
+                                        to={`/call-setup/${relation.id}`}
                                         className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
                                     >
                                         <MessageCircle className="h-5 w-5 mr-2" />
