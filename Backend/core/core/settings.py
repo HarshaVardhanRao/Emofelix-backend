@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-8pxgjz(j2n#uf6#u(6-(%js0w6$col@39h)yrg#c1%aj4eu+jn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["emofelix-backend.onrender.com"]
 
 
 # Application definition
