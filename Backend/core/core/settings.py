@@ -124,7 +124,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8001",  # FastAPI
     "http://127.0.0.1:8001",
     os.getenv('FASTAPI_URL', "https://emofelix-fastapi.onrender.com"),
-    os.getenv('FRONTEND_URL', "https://emofelix.netlify.app")
+    os.getenv('FRONTEND_URL', "https://emofelixapp.netlify.app")
 ]
 
 CORS_ALLOW_CREDENTIALS = True
