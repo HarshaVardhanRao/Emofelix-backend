@@ -8,12 +8,12 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'https://emofelix-backend.onrender.com',
         changeOrigin: true,
         secure: false,
       },
       '/chat': {
-        target: 'http://127.0.0.1:8001',
+        target: 'https://emofelix-fastapi.onrender.com',
         changeOrigin: true,
         secure: false,
       }
