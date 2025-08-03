@@ -138,7 +138,7 @@ const Chat = () => {
             setMessages(prev => [...prev, typingMessage]);
 
             // Send message to FastAPI streaming endpoint
-            const response = await fetch('http://127.0.0.1:8001/chat/stream', {
+            const response = await fetch(`${FASTAPI_BASE_URL}/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
