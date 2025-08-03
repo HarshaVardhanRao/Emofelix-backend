@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { API_BASE_URL, FASTAPI_BASE_URL } from '../apiBase';
 import {
     Send,
     ArrowLeft,
@@ -24,7 +25,7 @@ const Chat = () => {
 
     const fetchRelation = async () => {
         try {
-            const response = await axios.get(`http://127.0.0.1:8000/api/relations/${relationId}/`);
+            const response = await axios.get(`${API_BASE_URL}/api/relations/${relationId}/`);
             setRelation(response.data);
         } catch (error) {
             console.error('Failed to fetch relation:', error);
@@ -83,7 +84,7 @@ const Chat = () => {
             setMessages(prev => [...prev, typingMessage]);
 
             // Send message to FastAPI streaming endpoint
-            const response = await fetch('http://127.0.0.1:8001/chat/stream', {
+            const response = await fetch(`${FASTAPI_BASE_URL}/chat/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

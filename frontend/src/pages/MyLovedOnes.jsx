@@ -92,7 +92,7 @@ const MyLovedOnes = () => {
         const createDefaultRelations = async () => {
             try {
                 const promises = defaultRelations.map(template =>
-                    axios.post('http://127.0.0.1:8000/api/relations/', {
+                    axios.post(`${API_BASE_URL}/api/relations/`, {
                         name: template.title,
                         relation_type: template.type,
                         emotion_model: template.emotion,
@@ -109,14 +109,14 @@ const MyLovedOnes = () => {
 
         const fetchRelationsAndCreateDefaults = async () => {
             try {
-                const response = await axios.get('http://127.0.0.1:8000/api/relations/');
+                const response = await axios.get(`${API_BASE_URL}/api/relations/`);
                 const existingRelations = response.data;
 
                 // If user has no relations, create default ones
                 if (existingRelations.length === 0) {
                     await createDefaultRelations();
                     // Fetch again after creating defaults
-                    const updatedResponse = await axios.get('http://127.0.0.1:8000/api/relations/');
+                    const updatedResponse = await axios.get(`${API_BASE_URL}/api/relations/`);
                     setRelations(updatedResponse.data);
                 } else {
                     setRelations(existingRelations);
@@ -133,7 +133,7 @@ const MyLovedOnes = () => {
 
     const fetchRelations = async () => {
         try {
-            const response = await axios.get('http://127.0.0.1:8000/api/relations/');
+            const response = await axios.get(`${API_BASE_URL}/api/relations/`);
             setRelations(response.data);
         } catch (error) {
             console.error('Failed to fetch relations:', error);
@@ -145,7 +145,7 @@ const MyLovedOnes = () => {
     const handleCreateRelation = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://127.0.0.1:8000/api/relations/', newRelation);
+            await axios.post(`${API_BASE_URL}/api/relations/`, newRelation);
             setShowCreateModal(false);
             setSelectedTemplate(null);
             setNewRelation({ name: '', relation_type: '', emotion_model: 'Warm & Loving', voice_model: 'Gentle & Caring' });

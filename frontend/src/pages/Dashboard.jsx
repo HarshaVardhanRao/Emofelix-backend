@@ -30,11 +30,11 @@ const Dashboard = () => {
         const fetchDashboardData = async () => {
             try {
                 // Fetch relations
-                const relationsResponse = await axios.get('http://127.0.0.1:8000/api/relations/');
+            const relationsResponse = await axios.get(`${API_BASE_URL}/api/relations/`);
                 setRelations(relationsResponse.data);
 
                 // Fetch call history for recent chats
-                const historyResponse = await axios.get('http://127.0.0.1:8000/api/call-history/');
+            const historyResponse = await axios.get(`${API_BASE_URL}/api/call-history/`);
                 setRecentChats(historyResponse.data.slice(0, 5)); // Get last 5 chats
 
                 // Calculate stats

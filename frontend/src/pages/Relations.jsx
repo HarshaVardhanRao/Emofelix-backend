@@ -31,7 +31,7 @@ const Relations = () => {
 
     const fetchRelations = async () => {
         try {
-            const response = await axios.get('http://127.0.0.1:8000/api/relations/');
+            const response = await axios.get(`${API_BASE_URL}/api/relations/`);
             setRelations(response.data);
         } catch (error) {
             console.error('Failed to fetch relations:', error);
@@ -43,7 +43,7 @@ const Relations = () => {
     const handleCreateRelation = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://127.0.0.1:8000/api/relations/', newRelation);
+            await axios.post(`${API_BASE_URL}/api/relations/`, newRelation);
             setShowCreateModal(false);
             setNewRelation({ name: '', relation_type: '', emotion_model: '', voice_model: '' });
             fetchRelations();
