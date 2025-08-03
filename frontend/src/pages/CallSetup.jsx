@@ -11,9 +11,9 @@ import {
 } from 'lucide-react';
 
 const CallSetup = () => {
-    const { relationId } = useParams();
+    const { relationId } = useParams(); // We'll keep this param name for compatibility
     const navigate = useNavigate();
-    const [relation, setRelation] = useState(null);
+    const [character, setCharacter] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAppDownload, setShowAppDownload] = useState(false);
     const [selectedCallType, setSelectedCallType] = useState(null);
@@ -43,19 +43,19 @@ const CallSetup = () => {
     ];
 
     useEffect(() => {
-        const loadRelation = async () => {
+        const loadCharacter = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/relations/${relationId}/`);
-                setRelation(response.data);
+                const response = await axios.get(`${API_BASE_URL}/api/characters/${relationId}/`);
+                setCharacter(response.data);
             } catch (error) {
-                console.error('Failed to fetch relation:', error);
+                console.error('Failed to fetch character:', error);
                 navigate('/loved-ones');
             } finally {
                 setLoading(false);
             }
         };
 
-        loadRelation();
+        loadCharacter();
     }, [relationId, navigate]);
 
     const handleStartCall = (callType) => {
@@ -94,10 +94,10 @@ const CallSetup = () => {
         );
     }
 
-    if (!relation) {
+    if (!character) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800 flex items-center justify-center">
-                <div className="text-white text-xl">Relation not found</div>
+                <div className="text-white text-xl">Character not found</div>
             </div>
         );
     }
@@ -136,7 +136,7 @@ const CallSetup = () => {
 
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-white mb-1">Connection Setup</h1>
-                        <p className="text-pink-200 text-sm">Prepare for your conversation with {relation.name}</p>
+                        <p className="text-pink-200 text-sm">Prepare for your conversation with {character.name}</p>
                     </div>
 
                     <div className="w-48"></div> {/* Spacer for balance */}
@@ -149,8 +149,8 @@ const CallSetup = () => {
                             <div className="w-24 h-24 bg-gradient-to-br from-love-400 to-warm-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-love">
                                 <span className="text-4xl">👤</span>
                             </div>
-                            <h2 className="text-2xl font-bold text-white mb-2">{relation.name}</h2>
-                            <p className="text-pink-200 text-base">{relation.relation_type}</p>
+                            <h2 className="text-2xl font-bold text-white mb-2">{character.name}</h2>
+                            <p className="text-pink-200 text-base">{character.character_type}</p>
                             <div className="mt-3 flex items-center justify-center space-x-2">
                                 <span className="w-2 h-2 bg-peace-400 rounded-full animate-ping"></span>
                                 <span className="text-pink-200 text-sm">Ready to connect</span>
@@ -165,8 +165,8 @@ const CallSetup = () => {
                                             key={index}
                                             onClick={() => setMood(index)}
                                             className={`aspect-square rounded-lg flex items-center justify-center text-xl transition-all duration-300 ${mood === index
-                                                    ? 'bg-gradient-to-br from-warm-400 to-love-500 scale-110 shadow-warm'
-                                                    : 'bg-white/10 hover:bg-white/20 hover:scale-105'
+                                                ? 'bg-gradient-to-br from-warm-400 to-love-500 scale-110 shadow-warm'
+                                                : 'bg-white/10 hover:bg-white/20 hover:scale-105'
                                                 }`}
                                         >
                                             {emoji}

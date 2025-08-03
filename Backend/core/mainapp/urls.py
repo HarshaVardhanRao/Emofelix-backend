@@ -7,6 +7,7 @@ from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'relations', views.RelationViewSet, basename='relation-api')
+router.register(r'characters', views.CharacterViewSet, basename='character-api')
 
 
 urlpatterns = [

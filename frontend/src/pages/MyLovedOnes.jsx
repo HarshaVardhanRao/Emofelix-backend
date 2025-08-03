@@ -9,13 +9,14 @@ import {
     Users,
     Crown,
     Baby,
-    Sparkles
+    Sparkles,
+    Lock
 } from 'lucide-react';
+import { API_BASE_URL } from '../apiBase';
 
-// Default relation templates with personal touches
-const defaultRelations = [
-    {
-        type: 'Mother',
+// Character templates with personal touches
+const characterTemplates = {
+    'Mother': {
         icon: '👩‍❤️‍👨',
         emoji: '💝',
         title: 'My Mom',
@@ -24,8 +25,7 @@ const defaultRelations = [
         emotion: 'Nurturing & Wise',
         voice: 'Warm Mother'
     },
-    {
-        type: 'Father',
+    'Father': {
         icon: '👨‍👧‍👦',
         emoji: '💪',
         title: 'My Dad',
@@ -34,8 +34,7 @@ const defaultRelations = [
         emotion: 'Protective & Supportive',
         voice: 'Strong Father'
     },
-    {
-        type: 'Sister',
+    'Sister': {
         icon: '👭',
         emoji: '✨',
         title: 'My Sister',
@@ -44,8 +43,7 @@ const defaultRelations = [
         emotion: 'Playful & Understanding',
         voice: 'Sisterly & Fun'
     },
-    {
-        type: 'Brother',
+    'Brother': {
         icon: '👬',
         emoji: '🤝',
         title: 'My Brother',
@@ -54,8 +52,7 @@ const defaultRelations = [
         emotion: 'Brotherly & Loyal',
         voice: 'Brotherly & Cool'
     },
-    {
-        type: 'Partner',
+    'Partner': {
         icon: '💑',
         emoji: '💕',
         title: 'My Love',
@@ -64,8 +61,7 @@ const defaultRelations = [
         emotion: 'Romantic & Caring',
         voice: 'Loving Partner'
     },
-    {
-        type: 'Friend',
+    'Friend': {
         icon: '👫',
         emoji: '🌟',
         title: 'My Best Friend',
@@ -74,95 +70,34 @@ const defaultRelations = [
         emotion: 'Fun & Loyal',
         voice: 'Friendly & Cheerful'
     }
-];
+};
 
 const MyLovedOnes = () => {
-    const [relations, setRelations] = useState([]);
+    const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
-    const [newRelation, setNewRelation] = useState({
-        name: '',
-        relation_type: '',
-        emotion_model: 'Warm & Loving',
-        voice_model: 'Gentle & Caring'
-    });
 
     useEffect(() => {
-        const createDefaultRelations = async () => {
-            try {
-                const promises = defaultRelations.map(template =>
-                    axios.post(`${API_BASE_URL}/api/relations/`, {
-                        name: template.title,
-                        relation_type: template.type,
-                        emotion_model: template.emotion,
-                        voice_model: template.voice
-                    })
-                );
-
-                await Promise.all(promises);
-                console.log('Default relations created successfully');
-            } catch (error) {
-                console.error('Failed to create default relations:', error);
-            }
-        };
-
-        const fetchRelationsAndCreateDefaults = async () => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/api/relations/`);
-                const existingRelations = response.data;
-
-                // If user has no relations, create default ones
-                if (existingRelations.length === 0) {
-                    await createDefaultRelations();
-                    // Fetch again after creating defaults
-                    const updatedResponse = await axios.get(`${API_BASE_URL}/api/relations/`);
-                    setRelations(updatedResponse.data);
-                } else {
-                    setRelations(existingRelations);
-                }
-            } catch (error) {
-                console.error('Failed to fetch relations:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRelationsAndCreateDefaults();
+        fetchCharacters();
     }, []);
 
-    const fetchRelations = async () => {
+    const fetchCharacters = async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/relations/`);
-            setRelations(response.data);
+            const response = await axios.get(`${API_BASE_URL}/api/characters/`);
+            setCharacters(response.data);
         } catch (error) {
-            console.error('Failed to fetch relations:', error);
+            console.error('Failed to fetch characters:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCreateRelation = async (e) => {
-        e.preventDefault();
-        try {
-            await axios.post(`${API_BASE_URL}/api/relations/`, newRelation);
-            setShowCreateModal(false);
-            setSelectedTemplate(null);
-            setNewRelation({ name: '', relation_type: '', emotion_model: 'Warm & Loving', voice_model: 'Gentle & Caring' });
-            fetchRelations();
-        } catch (error) {
-            console.error('Failed to create relation:', error);
-        }
-    };
-
-    const getRelationIcon = (relationType) => {
-        const template = defaultRelations.find(t => t.type === relationType);
-        return template ? template.emoji : '💝';
-    };
-
-    const getRelationGradient = (relationType) => {
-        const template = defaultRelations.find(t => t.type === relationType);
-        return template ? template.gradient : 'from-warm-400 to-love-500';
+    const getCharacterTemplate = (characterType) => {
+        return characterTemplates[characterType] || {
+            emoji: '💝',
+            gradient: 'from-warm-400 to-love-500',
+            title: characterType,
+            description: 'A special person in your life'
+        };
     };
 
     if (loading) {
@@ -170,7 +105,7 @@ const MyLovedOnes = () => {
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800 flex items-center justify-center">
                 <div className="text-center">
                     <Heart className="h-16 w-16 text-love-400 animate-warm-pulse mx-auto mb-4" />
-                    <p className="text-white text-xl">Loading your loved ones...</p>
+                    <p className="text-white text-xl">Loading your characters...</p>
                 </div>
             </div>
         );
@@ -205,152 +140,99 @@ const MyLovedOnes = () => {
                         💕 Your Circle of Love
                     </div>
                     <h1 className="text-5xl lg:text-6xl font-black text-white mb-4">
-                        Your <span className="loving-text">Loved Ones</span>
+                        Your <span className="loving-text">Characters</span>
                     </h1>
                     <p className="text-xl text-pink-200 max-w-2xl mx-auto leading-relaxed">
-                        Create AI companions of the people who matter most to you.
-                        They're always here when you need them. 💝
+                        Connect with AI companions that understand you deeply.
+                        Unlock new characters as you journey together. 💝
                     </p>
                 </div>
 
-                {/* My Relations Section */}
-                {relations.length > 0 && (
+                {/* My Characters Section */}
+                {characters.length > 0 && (
                     <div className="mb-16">
                         <h2 className="text-3xl font-bold text-white mb-8 text-center">
-                            💬 Ready to Chat
+                            💬 Your Characters
                         </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {relations.map((relation) => (
-                                <div key={relation.id} className="group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-love-400/20">
-                                    {/* Avatar and Basic Info */}
-                                    <div className="flex items-center space-x-4 mb-6">
-                                        <div className={`w-16 h-16 bg-gradient-to-br ${getRelationGradient(relation.relation_type)} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform`}>
-                                            {getRelationIcon(relation.relation_type)}
+                            {characters.map((character) => {
+                                const template = getCharacterTemplate(character.character_type);
+                                return (
+                                    <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${character.is_unlocked ? 'border-love-400/20' : 'border-gray-500/20'}`}>
+                                        {/* Avatar and Basic Info */}
+                                        <div className="flex items-center space-x-4 mb-6">
+                                            <div className={`w-16 h-16 bg-gradient-to-br ${template.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
+                                                {template.emoji}
+                                                {!character.is_unlocked && (
+                                                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                                        <Lock className="h-6 w-6 text-white" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className={`text-xl font-bold ${character.is_unlocked ? 'text-white group-hover:loving-text' : 'text-gray-400'} transition-all`}>
+                                                    {character.name}
+                                                </h3>
+                                                <p className={`${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'}`}>
+                                                    {character.character_type}
+                                                </p>
+                                                {!character.is_unlocked && (
+                                                    <div className="flex items-center mt-1">
+                                                        <Lock className="h-3 w-3 text-gray-500 mr-1" />
+                                                        <span className="text-xs text-gray-500">Locked</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-xl font-bold text-white group-hover:loving-text transition-all">{relation.name}</h3>
-                                            <p className="text-pink-200">{relation.relation_type}</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Quick Info */}
-                                    <div className="space-y-2 mb-6">
-                                        <div className="flex items-center space-x-2">
-                                            <Sparkles className="h-4 w-4 text-warm-400" />
-                                            <span className="text-sm text-pink-200">{relation.emotion_model}</span>
+                                        {/* Quick Info */}
+                                        <div className="space-y-2 mb-6">
+                                            <div className="flex items-center space-x-2">
+                                                <Sparkles className={`h-4 w-4 ${character.is_unlocked ? 'text-warm-400' : 'text-gray-500'}`} />
+                                                <span className={`text-sm ${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'}`}>
+                                                    {template.emotion}
+                                                </span>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    {/* Chat Button */}
-                                    <Link
-                                        to={`/call-setup/${relation.id}`}
-                                        className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
-                                    >
-                                        <MessageCircle className="h-5 w-5 mr-2" />
-                                        💬 Start Chatting
-                                    </Link>
-                                </div>
-                            ))}
+                                        {/* Action Button */}
+                                        {character.is_unlocked ? (
+                                            <Link
+                                                to={`/call-setup/${character.id}`}
+                                                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
+                                            >
+                                                <MessageCircle className="h-5 w-5 mr-2" />
+                                                💬 Start Chatting
+                                            </Link>
+                                        ) : (
+                                            <div className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold rounded-2xl cursor-not-allowed opacity-75">
+                                                <Lock className="h-5 w-5 mr-2" />
+                                                � Coming Soon
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
-                {/* Custom Relation Button - Only show after default relations are created */}
-                {relations.length > 0 && (
-                    <div className="text-center mt-12">
-                        <button
-                            onClick={() => {
-                                setSelectedTemplate(null);
-                                setNewRelation({ name: '', relation_type: '', emotion_model: 'Warm & Loving', voice_model: 'Gentle & Caring' });
-                                setShowCreateModal(true);
-                            }}
-                            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-peace-500 to-comfort-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-peace"
-                        >
-                            <User className="h-6 w-6 mr-3" />
-                            🌟 Create Custom Relationship
-                        </button>
+                {/* Info Section */}
+                {characters.length === 0 && !loading && (
+                    <div className="text-center">
+                        <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+                            <Heart className="h-16 w-16 text-love-400 mx-auto mb-4" />
+                            <h3 className="text-2xl font-bold text-white mb-4">
+                                Welcome to Your Circle of Love!
+                            </h3>
+                            <p className="text-pink-200 max-w-md mx-auto">
+                                Your characters will appear here automatically when you create an account.
+                                You'll start with 1 character unlocked, and more will be unlocked based on special criteria!
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
-
-            {/* Create Relation Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="glass-card rounded-3xl p-8 w-full max-w-md border-2 border-love-400/30 shadow-love">
-                        <div className="text-center mb-6">
-                            {selectedTemplate && (
-                                <div className={`w-16 h-16 bg-gradient-to-br ${selectedTemplate.gradient} rounded-full flex items-center justify-center text-3xl mx-auto mb-4`}>
-                                    {selectedTemplate.emoji}
-                                </div>
-                            )}
-                            <h2 className="text-2xl font-bold text-white">
-                                {selectedTemplate ? `Create Your ${selectedTemplate.title}` : 'Create Custom Relationship'}
-                            </h2>
-                            <p className="text-pink-200 mt-2">
-                                {selectedTemplate ? selectedTemplate.description : 'Design your own unique relationship'}
-                            </p>
-                        </div>
-
-                        <form onSubmit={handleCreateRelation} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-pink-200 mb-2">
-                                    💝 What should we call them?
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={newRelation.name}
-                                    onChange={(e) => setNewRelation({ ...newRelation, name: e.target.value })}
-                                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-2xl text-white placeholder-pink-300 focus:outline-none focus:ring-2 focus:ring-love-400 focus:border-love-400 backdrop-blur-sm"
-                                    placeholder={selectedTemplate ? `e.g., "Mom", "Mama", "Mother"` : "Enter their name"}
-                                />
-                            </div>
-
-                            {!selectedTemplate && (
-                                <div>
-                                    <label className="block text-sm font-medium text-pink-200 mb-2">
-                                        👥 Relationship Type
-                                    </label>
-                                    <select
-                                        required
-                                        value={newRelation.relation_type}
-                                        onChange={(e) => setNewRelation({ ...newRelation, relation_type: e.target.value })}
-                                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-love-400 focus:border-love-400 backdrop-blur-sm"
-                                    >
-                                        <option value="" className="bg-gray-800">Select relationship type</option>
-                                        {defaultRelations.map(template => (
-                                            <option key={template.type} value={template.type} className="bg-gray-800">{template.type}</option>
-                                        ))}
-                                        <option value="Grandparent" className="bg-gray-800">Grandparent</option>
-                                        <option value="Cousin" className="bg-gray-800">Cousin</option>
-                                        <option value="Mentor" className="bg-gray-800">Mentor</option>
-                                        <option value="Other" className="bg-gray-800">Other</option>
-                                    </select>
-                                </div>
-                            )}
-
-                            <div className="flex space-x-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowCreateModal(false);
-                                        setSelectedTemplate(null);
-                                    }}
-                                    className="flex-1 px-6 py-3 bg-white/10 border border-white/20 text-white rounded-2xl hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love"
-                                >
-                                    💝 Create
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

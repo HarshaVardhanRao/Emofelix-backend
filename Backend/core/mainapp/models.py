@@ -10,8 +10,42 @@ class CustomUser(AbstractUser):
     # You can add additional fields here if needed in the future
     def __str__(self):
         return self.username
+
 # -------------------------------
-# Relations
+# Characters (AI Companions)
+# -------------------------------
+class Character(models.Model):
+    CHARACTER_TYPES = [
+        ('Mother', 'Mother'),
+        ('Father', 'Father'),
+        ('Sister', 'Sister'),
+        ('Brother', 'Brother'),
+        ('Partner', 'Partner'),
+        ('Friend', 'Friend'),
+        ('Grandmother', 'Grandmother'),
+        ('Grandfather', 'Grandfather'),
+        ('Mentor', 'Mentor'),
+        ('Child', 'Child'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="characters")
+    name = models.CharField(max_length=100)
+    character_type = models.CharField(max_length=50, choices=CHARACTER_TYPES)
+    emotion_model = models.CharField(max_length=100)
+    voice_model = models.CharField(max_length=100)
+    is_unlocked = models.BooleanField(default=False)
+    unlock_order = models.PositiveIntegerField(default=0)  # Order in which they should be unlocked
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['unlock_order', 'created_at']
+        unique_together = ['user', 'character_type']  # One character per type per user
+
+    def __str__(self):
+        return f"{self.name} ({self.character_type}) - {'Unlocked' if self.is_unlocked else 'Locked'}"
+
+# -------------------------------
+# Relations (Legacy - keeping for backward compatibility)
 # -------------------------------
 class Relation(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="relations")

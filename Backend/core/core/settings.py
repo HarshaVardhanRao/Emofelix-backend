@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-8pxgjz(j2n#uf6#u(6-(%js0w6$col@39h)yrg#c1%aj4eu+jn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["emofelix-backend.onrender.com", "emofelixapp.netlify.app"]
+ALLOWED_HOSTS = ["emofelix-backend.onrender.com", "emofelixapp.netlify.app", "127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "mainapp",  # Custom app for the project
+    "mainapp.apps.MainappConfig",  # Custom app for the project with proper config
     "rest_framework",  # Django REST Framework for API development
     "rest_framework.authtoken",
     "social_django",  # Social authentication support

@@ -204,6 +204,15 @@ class RelationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+class CharacterViewSet(viewsets.ModelViewSet):
+    """CRUD API endpoint for Characters."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = CharacterSerializer
+    def get_queryset(self):
+        return Character.objects.filter(user=self.request.user)
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 class StartCallView(APIView):
     """API Endpoint to prepare a call with a specific relation."""
     permission_classes = [IsAuthenticated]

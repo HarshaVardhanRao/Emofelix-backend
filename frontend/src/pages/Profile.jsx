@@ -15,6 +15,7 @@ import {
     Calendar,
     Award
 } from 'lucide-react';
+import { API_BASE_URL } from '../apiBase';
 
 const Profile = () => {
     const { user, logout } = useAuth();

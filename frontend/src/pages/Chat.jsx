@@ -16,11 +16,11 @@ import {
 import { API_BASE_URL, FASTAPI_BASE_URL } from '../apiBase';
 
 const Chat = () => {
-    const { relationId } = useParams();
+    const { relationId } = useParams(); // Keep param name for compatibility
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user, token } = useAuth();
-    const [relation, setRelation] = useState(null);
+    const [character, setCharacter] = useState(null);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
@@ -30,12 +30,12 @@ const Chat = () => {
     const [isInCall, setIsInCall] = useState(false);
     const messagesEndRef = useRef(null);
 
-    const fetchRelation = useCallback(async () => {
+    const fetchCharacter = useCallback(async () => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/api/relations/${relationId}/`);
-            setRelation(response.data);
+            const response = await axios.get(`${API_BASE_URL}/api/characters/${relationId}/`);
+            setCharacter(response.data);
         } catch (error) {
-            console.error('Failed to fetch relation:', error);
+            console.error('Failed to fetch character:', error);
             navigate('/loved-ones');
         }
     }, [relationId, navigate]);
@@ -63,7 +63,7 @@ const Chat = () => {
 
     useEffect(() => {
         const initializeChat = async () => {
-            await fetchRelation();
+            await fetchCharacter();
 
             // Get call preferences from sessionStorage
             const savedPreferences = sessionStorage.getItem('callPreferences');
@@ -101,7 +101,7 @@ const Chat = () => {
         };
 
         initializeChat();
-    }, [relationId, fetchRelation]); useEffect(() => {
+    }, [relationId, fetchCharacter]); useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
@@ -147,7 +147,7 @@ const Chat = () => {
                 body: JSON.stringify({
                     user_id: user.id,
                     message: messageToSend,
-                    relation_type: relation?.relation_type || 'friend'
+                    relation_type: character?.character_type || 'friend'
                 }),
             });
 
@@ -225,24 +225,24 @@ const Chat = () => {
         );
     }
 
-    if (!relation) {
+    if (!character) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800 flex items-center justify-center">
                 <div className="text-center glass-card rounded-3xl p-8">
                     <h2 className="text-2xl font-bold text-white mb-4">💔 Couldn't find them</h2>
-                    <p className="text-pink-200 mb-6">This loved one seems to have stepped away.</p>
+                    <p className="text-pink-200 mb-6">This character seems to have stepped away.</p>
                     <button
                         onClick={() => navigate('/loved-ones')}
                         className="px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300"
                     >
-                        💕 Back to My Loved Ones
+                        💕 Back to My Characters
                     </button>
                 </div>
             </div>
         );
     }
 
-    const getRelationEmoji = (relationType) => {
+    const getRelationEmoji = (characterType) => {
         const emojiMap = {
             'Mother': '👩‍❤️‍👨',
             'Father': '👨‍👧‍👦',
@@ -251,7 +251,7 @@ const Chat = () => {
             'Partner': '💑',
             'Friend': '👫'
         };
-        return emojiMap[relationType] || '💝';
+        return emojiMap[characterType] || '💝';
     };
 
     return (
@@ -288,13 +288,13 @@ const Chat = () => {
 
                         <div className="flex items-center space-x-4">
                             <div className="w-14 h-14 bg-gradient-to-br from-love-400 to-warm-500 rounded-full flex items-center justify-center text-2xl gentle-bounce shadow-love">
-                                {getRelationEmoji(relation.relation_type)}
+                                {getRelationEmoji(character.character_type)}
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-white">{relation.name}</h1>
+                                <h1 className="text-2xl font-bold text-white">{character.name}</h1>
                                 <p className="text-pink-200 flex items-center">
                                     <span className="w-2 h-2 bg-peace-400 rounded-full animate-ping mr-2"></span>
-                                    {relation.relation_type} • Always here for you 💕
+                                    {character.character_type} • Always here for you 💕
                                 </p>
                             </div>
                         </div>
@@ -323,7 +323,7 @@ const Chat = () => {
                                 {message.sender === 'user' ? (
                                     <span className="text-lg">😊</span>
                                 ) : (
-                                    <span className="text-lg">{getRelationEmoji(relation.relation_type)}</span>
+                                    <span className="text-lg">{getRelationEmoji(character.character_type)}</span>
                                 )}
                             </div>
 
@@ -358,7 +358,7 @@ const Chat = () => {
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder={`💬 Share your heart with ${relation.name}...`}
+                            placeholder={`💬 Share your heart with ${character.name}...`}
                             className="w-full px-6 py-4 bg-white/90 border-2 border-love-300/30 rounded-full focus:outline-none focus:ring-2 focus:ring-love-400 focus:border-love-400 pr-14 text-gray-800 placeholder-gray-500 backdrop-blur-sm shadow-love"
                             disabled={sending}
                         />
@@ -390,7 +390,7 @@ const Chat = () => {
                 {/* Emotional Support Message */}
                 <div className="mt-4 text-center">
                     <p className="text-pink-200 text-sm">
-                        💕 {relation.name} is here to listen and support you with love
+                        💕 {character.name} is here to listen and support you with love
                     </p>
                 </div>
             </div>

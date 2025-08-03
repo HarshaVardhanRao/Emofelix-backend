@@ -27,6 +27,13 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'first_name', 'last_name')
         read_only_fields = ('email', 'id') # Don't allow email change via this endpoint
 
+class CharacterSerializer(serializers.ModelSerializer):
+    """Serializer for Character model."""
+    class Meta:
+        model = Character
+        fields = ('id', 'name', 'character_type', 'emotion_model', 'voice_model', 'is_unlocked', 'unlock_order', 'created_at')
+        read_only_fields = ('user', 'unlock_order', 'created_at')
+
 # Keep your existing serializers and add the above
 class RelationSerializer(serializers.ModelSerializer):
     class Meta:
