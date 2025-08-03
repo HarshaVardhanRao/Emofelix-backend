@@ -40,7 +40,7 @@ const Profile = () => {
 
     const fetchProfile = async () => {
         try {
-            const response = await axios.get('http://127.0.0.1:8000/api/profile/');
+            const response = await axios.get(`${API_BASE_URL}/api/profile/`);
             setProfile(response.data);
         } catch (error) {
             console.error('Failed to fetch profile:', error);
@@ -52,10 +52,10 @@ const Profile = () => {
     const fetchStats = async () => {
         try {
             // Fetch relations for count
-            const relationsResponse = await axios.get('http://127.0.0.1:8000/api/relations/');
+            const relationsResponse = await axios.get(`${API_BASE_URL}/api/relations/`);
 
             // Fetch call history for count
-            const historyResponse = await axios.get('http://127.0.0.1:8000/api/call-history/');
+            const historyResponse = await axios.get(`${API_BASE_URL}/api/call-history/`);
 
             setStats({
                 totalRelations: relationsResponse.data.length,

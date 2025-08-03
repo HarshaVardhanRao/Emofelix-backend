@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../apiBase';
 
 const AuthContext = createContext();
 
@@ -30,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         const checkAuth = async () => {
             if (token) {
                 try {
-                    const response = await axios.get('http://127.0.0.1:8000/api/profile/');
+                    const response = await axios.get(`${API_BASE_URL}/api/profile/`);
                     setUser(response.data);
                 } catch (error) {
                     console.error('Auth check failed:', error);
@@ -39,13 +40,12 @@ export const AuthProvider = ({ children }) => {
             }
             setLoading(false);
         };
-
         checkAuth();
     }, [token]);
 
     const login = async (email, password) => {
         try {
-            const response = await axios.post('http://127.0.0.1:8000/api/login/', {
+            const response = await axios.post(`${API_BASE_URL}/api/login/`, {
                 email,
                 password,
             });
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', authToken);
 
             // Fetch user profile
-            const profileResponse = await axios.get('http://127.0.0.1:8000/api/profile/');
+            const profileResponse = await axios.get(`${API_BASE_URL}/api/profile/`);
             setUser(profileResponse.data);
 
             return { success: true };
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (userData) => {
         try {
-            const response = await axios.post('http://127.0.0.1:8000/api/register/', userData);
+            const response = await axios.post(`${API_BASE_URL}/api/register/`, userData);
 
             // Auto-login after registration
             const loginResult = await login(userData.email, userData.password);
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             if (token) {
-                await axios.post('http://127.0.0.1:8000/api/logout/');
+                await axios.post(`${API_BASE_URL}/api/logout/`);
             }
         } catch (error) {
             console.error('Logout error:', error);

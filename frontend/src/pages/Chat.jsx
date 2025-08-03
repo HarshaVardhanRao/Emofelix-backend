@@ -13,6 +13,8 @@ import {
     PhoneOff
 } from 'lucide-react';
 
+import { API_BASE_URL, FASTAPI_BASE_URL } from '../apiBase';
+
 const Chat = () => {
     const { relationId } = useParams();
     const [searchParams] = useSearchParams();
@@ -30,7 +32,7 @@ const Chat = () => {
 
     const fetchRelation = useCallback(async () => {
         try {
-            const response = await axios.get(`http://127.0.0.1:8000/api/relations/${relationId}/`);
+            const response = await axios.get(`${API_BASE_URL}/api/relations/${relationId}/`);
             setRelation(response.data);
         } catch (error) {
             console.error('Failed to fetch relation:', error);
