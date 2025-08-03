@@ -17,6 +17,8 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://emofelixapp.netlify.app",
+    "https://emofelix-backend.onrender.com"
 ]
 
 app.add_middleware(
