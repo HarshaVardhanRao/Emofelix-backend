@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-8pxgjz(j2n#uf6#u(6-(%js0w6$col@39h)yrg#c1%aj4eu+jn"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["emofelix-backend.onrender.com"]
+ALLOWED_HOSTS = ["emofelix-backend.onrender.com", "emofelixapp.netlify.app"]
 
 
 # Application definition
