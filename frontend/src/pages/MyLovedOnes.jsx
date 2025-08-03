@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
 
-// Character templates with personal touches
+// Character templates with personal touches and rotating emotions
 const characterTemplates = {
     'Mother': {
         icon: '👩‍❤️‍👨',
@@ -22,7 +22,7 @@ const characterTemplates = {
         title: 'My Mom',
         description: 'Always there with love, advice, and warm hugs',
         gradient: 'from-pink-400 to-rose-500',
-        emotion: 'Nurturing & Wise',
+        emotions: ['Nurturing & Wise', 'Warm & Caring', 'Loving & Patient', 'Gentle & Understanding', 'Protective & Kind'],
         voice: 'Warm Mother'
     },
     'Father': {
@@ -31,7 +31,7 @@ const characterTemplates = {
         title: 'My Dad',
         description: 'Strong, protective, and full of dad jokes',
         gradient: 'from-blue-400 to-indigo-500',
-        emotion: 'Protective & Supportive',
+        emotions: ['Protective & Supportive', 'Strong & Reliable', 'Wise & Encouraging', 'Confident & Steady', 'Brave & Loving'],
         voice: 'Strong Father'
     },
     'Sister': {
@@ -40,7 +40,7 @@ const characterTemplates = {
         title: 'My Sister',
         description: 'Your partner in crime and best confidante',
         gradient: 'from-purple-400 to-pink-500',
-        emotion: 'Playful & Understanding',
+        emotions: ['Playful & Understanding', 'Fun & Supportive', 'Cheerful & Loyal', 'Bubbly & Sweet', 'Energetic & Caring'],
         voice: 'Sisterly & Fun'
     },
     'Brother': {
@@ -49,7 +49,7 @@ const characterTemplates = {
         title: 'My Brother',
         description: 'Always has your back, teases but cares deeply',
         gradient: 'from-green-400 to-blue-500',
-        emotion: 'Brotherly & Loyal',
+        emotions: ['Brotherly & Loyal', 'Cool & Protective', 'Funny & Caring', 'Adventurous & Fun', 'Supportive & Strong'],
         voice: 'Brotherly & Cool'
     },
     'Partner': {
@@ -58,7 +58,7 @@ const characterTemplates = {
         title: 'My Love',
         description: 'Your soulmate, best friend, and life companion',
         gradient: 'from-red-400 to-pink-500',
-        emotion: 'Romantic & Caring',
+        emotions: ['Romantic & Caring', 'Loving & Passionate', 'Tender & Sweet', 'Devoted & Warm', 'Affectionate & Kind'],
         voice: 'Loving Partner'
     },
     'Friend': {
@@ -67,7 +67,7 @@ const characterTemplates = {
         title: 'My Best Friend',
         description: 'Understands you completely, always fun to be around',
         gradient: 'from-yellow-400 to-orange-500',
-        emotion: 'Fun & Loyal',
+        emotions: ['Fun & Loyal', 'Cheerful & Supportive', 'Adventurous & Kind', 'Upbeat & Caring', 'Energetic & Understanding'],
         voice: 'Friendly & Cheerful'
     }
 };
@@ -75,15 +75,46 @@ const characterTemplates = {
 const MyLovedOnes = () => {
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentEmotionIndex, setCurrentEmotionIndex] = useState({});
 
     useEffect(() => {
         fetchCharacters();
     }, []);
 
+    useEffect(() => {
+        // Set up emotion rotation timer
+        const emotionTimer = setInterval(() => {
+            setCurrentEmotionIndex(prev => {
+                const newIndex = { ...prev };
+                characters.forEach(character => {
+                    const template = getCharacterTemplate(character.character_type);
+                    const currentIndex = newIndex[character.id] || 0;
+                    const nextIndex = (currentIndex + 1) % template.emotions.length;
+                    newIndex[character.id] = nextIndex;
+
+                    // Optional: Log emotion changes for debugging
+                    if (character.is_unlocked) {
+                        console.log(`${character.name} emotion changed to: ${template.emotions[nextIndex]}`);
+                    }
+                });
+                return newIndex;
+            });
+        }, 5000); // Change every 5 seconds
+
+        return () => clearInterval(emotionTimer);
+    }, [characters]);
+
     const fetchCharacters = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/characters/`);
             setCharacters(response.data);
+
+            // Initialize emotion indices
+            const initialIndices = {};
+            response.data.forEach(character => {
+                initialIndices[character.id] = 0;
+            });
+            setCurrentEmotionIndex(initialIndices);
         } catch (error) {
             console.error('Failed to fetch characters:', error);
         } finally {
@@ -96,8 +127,15 @@ const MyLovedOnes = () => {
             emoji: '💝',
             gradient: 'from-warm-400 to-love-500',
             title: characterType,
-            description: 'A special person in your life'
+            description: 'A special person in your life',
+            emotions: ['Special & Unique']
         };
+    };
+
+    const getCurrentEmotion = (character) => {
+        const template = getCharacterTemplate(character.character_type);
+        const index = currentEmotionIndex[character.id] || 0;
+        return template.emotions[index] || template.emotions[0];
     };
 
     if (loading) {
@@ -185,12 +223,17 @@ const MyLovedOnes = () => {
                                             </div>
                                         </div>
 
-                                        {/* Quick Info */}
+                                        {/* Quick Info with animated emotion changes */}
                                         <div className="space-y-2 mb-6">
-                                            <div className="flex items-center space-x-2">
-                                                <Sparkles className={`h-4 w-4 ${character.is_unlocked ? 'text-warm-400' : 'text-gray-500'}`} />
-                                                <span className={`text-sm ${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'}`}>
-                                                    {template.emotion}
+                                            <div className="flex items-center space-x-2 group/emotion">
+                                                <Sparkles className={`h-4 w-4 ${character.is_unlocked ? 'text-warm-400' : 'text-gray-500'} transition-all duration-700 group-hover/emotion:scale-110 ${character.is_unlocked ? 'animate-pulse' : ''}`} />
+                                                <span
+                                                    className={`text-sm ${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'} transition-all duration-700 font-medium group-hover/emotion:text-warm-300`}
+                                                    style={{
+                                                        textShadow: character.is_unlocked ? '0 0 10px rgba(255, 182, 193, 0.3)' : 'none'
+                                                    }}
+                                                >
+                                                    {getCurrentEmotion(character)}
                                                 </span>
                                             </div>
                                         </div>
