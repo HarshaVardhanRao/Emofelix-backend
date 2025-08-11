@@ -6,8 +6,10 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LogoutView as TemplateLogoutView
+from django.http import StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
+from django.utils.encoding import smart_str
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
 # --- DRF Imports ---
@@ -21,10 +23,18 @@ from rest_framework.views import APIView
 # --- Google Auth Imports ---
 from google.oauth2 import id_token
 from google.auth.transport import requests
+import google.generativeai as genai
 
 # --- Local Imports ---
 from .models import *
 from .serializers import *
+
+# Configure Gemini only once
+if getattr(settings, 'GEMINI_API_KEY', None):
+    try:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+    except Exception:
+        pass
 
 # =============================================================================
 # TEMPLATE-BASED VIEWS (FOR WEB INTERFACE)
@@ -107,7 +117,8 @@ class RelationCreateView(LoginRequiredMixin, CreateView):
 
 class RelationUpdateView(LoginRequiredMixin, UpdateView):
     model = Relation
-    fields = ['name', 'relation_type', 'emotion_model', 'voice_model']
+    fields = ['name', 'relation_type', 'emotion_model', 'voice_model'
+    ]
     template_name = 'mainapp/relation_form.html'
     success_url = reverse_lazy('relation-list')
 
@@ -242,3 +253,74 @@ class ApiCallHistoryListView(generics.ListAPIView):
         if relation_id:
             queryset = queryset.filter(call__relation__id=relation_id)
         return queryset
+
+class GeminiChatStreamView(APIView):
+    """Streaming chat endpoint backed by Gemini model.
+    Expects JSON body with keys:
+      - message (str) latest user message
+      - relation_type (str)
+      - mood (str) optional mood label
+      - topic (str) optional topic
+      - additional_details (str) optional extra context
+      - nickname (str) optional user's nickname
+      - history (list[{role, content}]) prior turns (role in {user, assistant})
+    Returns SSE stream of words: lines formatted as 'data: <word>\n\n'
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not getattr(settings, 'GEMINI_API_KEY', None):
+            return Response({"error": "Gemini API key not configured"}, status=500)
+
+        message = request.data.get('message', '').strip()
+        relation_type = request.data.get('relation_type', 'Friend')
+        mood = request.data.get('mood') or 'Neutral'
+        topic = request.data.get('topic') or 'General conversation'
+        additional_details = request.data.get('additional_details') or ''
+        nickname = request.data.get('nickname') or request.user.first_name or request.user.username
+        history = request.data.get('history') or []
+
+        if not message:
+            return Response({"error": "Message is required"}, status=400)
+
+        # Build conversation context as plain text (Gemini also supports structured messages; keep simple here)
+        system_preamble = (
+            f"You are role-playing as the user's {relation_type}. "
+            f"Speak lovingly and supportively, matching the emotional tone requested. "
+            f"User mood: {mood}. Topic: {topic}. Nickname of user: {nickname}. "
+            f"Additional context: {additional_details}. Do NOT break character; refer to the user by their nickname naturally." 
+        )
+
+        conversation_lines = [f"System: {system_preamble}"]
+        for turn in history:
+            r = turn.get('role')
+            c = smart_str(turn.get('content', ''))
+            if r == 'user':
+                conversation_lines.append(f"User: {c}")
+            elif r == 'assistant':
+                conversation_lines.append(f"{relation_type}: {c}")
+        conversation_lines.append(f"User: {message}")
+        conversation_lines.append(f"{relation_type}:")
+        prompt_text = "\n".join(conversation_lines)
+
+        model_name = getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+
+        def stream_gen():
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(prompt_text, stream=True)
+                for chunk in response:
+                    try:
+                        text = getattr(chunk, 'text', '') or ''
+                    except Exception:
+                        text = ''
+                    if not text:
+                        continue
+                    for word in text.split():
+                        yield f"data: {word}\n\n".encode('utf-8')
+                yield b"data: [END]\n\n"
+            except Exception as e:
+                err = f"data: Sorry, an internal error occurred: {str(e)[:120]}\n\n"
+                yield err.encode('utf-8')
+
+        return StreamingHttpResponse(stream_gen(), content_type='text/event-stream')

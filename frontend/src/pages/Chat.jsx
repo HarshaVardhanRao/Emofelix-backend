@@ -13,7 +13,7 @@ import {
     PhoneOff
 } from 'lucide-react';
 
-import { API_BASE_URL, FASTAPI_BASE_URL } from '../apiBase';
+import { API_BASE_URL, GEMINI_CHAT_STREAM_URL } from '../apiBase';
 
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
@@ -127,7 +127,6 @@ const Chat = () => {
         setNewMessage('');
 
         try {
-            // Add typing indicator
             const typingMessage = {
                 id: Date.now() + 1,
                 content: '',
@@ -137,18 +136,28 @@ const Chat = () => {
             };
             setMessages(prev => [...prev, typingMessage]);
 
-            // Send message to FastAPI streaming endpoint
-            const response = await fetch(`${FASTAPI_BASE_URL}/chat/stream`, {
+            const historyPayload = messages.slice(-20).map(m => ({
+                role: m.sender === 'user' ? 'user' : 'assistant',
+                content: m.content
+            }));
+
+            const body = {
+                message: messageToSend,
+                relation_type: character?.character_type || 'Friend',
+                mood: callPreferences?.moodLabel || callPreferences?.mood,
+                topic: callPreferences?.topic,
+                additional_details: callPreferences?.additionalDetails,
+                nickname: (user?.first_name || user?.username),
+                history: historyPayload
+            };
+
+            const response = await fetch(GEMINI_CHAT_STREAM_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Token ${token}`,
                 },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    message: messageToSend,
-                    relation_type: character?.character_type || 'friend'
-                }),
+                body: JSON.stringify(body),
             });
 
             if (!response.ok) {
@@ -159,10 +168,7 @@ const Chat = () => {
             const decoder = new TextDecoder();
             let aiResponse = '';
 
-            // Remove typing indicator
             setMessages(prev => prev.filter(msg => !msg.typing));
-
-            // Add AI message that will be updated with streaming content
             const aiMessageId = Date.now() + 2;
             setMessages(prev => [...prev, {
                 id: aiMessageId,
@@ -174,16 +180,13 @@ const Chat = () => {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-
                 const chunk = decoder.decode(value);
                 const lines = chunk.split('\n');
-
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const word = line.slice(6);
-                        if (word.trim()) {
+                        if (word.trim() && word !== '[END]') {
                             aiResponse += word + ' ';
-                            // Update the AI message with the accumulated response
                             setMessages(prev => prev.map(msg =>
                                 msg.id === aiMessageId
                                     ? { ...msg, content: aiResponse.trim() }
@@ -195,7 +198,6 @@ const Chat = () => {
             }
         } catch (error) {
             console.error('Failed to send message:', error);
-            // Remove typing indicator and add error message
             setMessages(prev => prev.filter(msg => !msg.typing));
             setMessages(prev => [...prev, {
                 id: Date.now() + 3,

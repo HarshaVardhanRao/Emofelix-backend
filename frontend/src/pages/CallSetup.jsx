@@ -59,16 +59,14 @@ const CallSetup = () => {
     }, [relationId, navigate]);
 
     const handleStartCall = (callType) => {
-        // Save call preferences
         const callData = {
             mood,
+            moodLabel: moodLabels[mood],
             language,
             topic,
             additionalDetails,
             callType
         };
-
-        // Store call preferences in sessionStorage for the chat component
         sessionStorage.setItem('callPreferences', JSON.stringify(callData));
 
         if (callType === 'voice' || callType === 'video') {
