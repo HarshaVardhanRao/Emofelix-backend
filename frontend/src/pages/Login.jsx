@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles, Heart } from 'lucide-react';
@@ -12,7 +12,10 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login, googleLogin } = useAuth();
+    const googleBtnRenderedRef = useRef(false);
+    const [googleReady, setGoogleReady] = useState(false);
+
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -43,6 +46,67 @@ const Login = () => {
             setLoading(false);
         }
     };
+
+    const loadGoogleScript = () => {
+        return new Promise((resolve, reject) => {
+            if (window.google && window.google.accounts && window.google.accounts.id) {
+                return resolve();
+            }
+            const existing = document.getElementById('google-identity-script');
+            if (existing) {
+                existing.addEventListener('load', () => resolve());
+                existing.addEventListener('error', reject);
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
+            script.id = 'google-identity-script';
+            script.onload = () => resolve();
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    };
+
+    const initGoogle = async () => {
+        if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+            console.warn('VITE_GOOGLE_CLIENT_ID not set');
+            return;
+        }
+        if (!(window.google && window.google.accounts && window.google.accounts.id)) return;
+        try {
+            window.google.accounts.id.initialize({
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+                callback: async (response) => {
+                    if (!response.credential) {
+                        setError('No credential received');
+                        return;
+                    }
+                    const result = await googleLogin(response.credential);
+                    if (result.success) navigate('/dashboard'); else setError(result.error);
+                },
+                ux_mode: 'popup'
+            });
+            // Optionally render styled Google button inside our existing custom button container if we want default styling
+            const container = document.getElementById('google_button_container');
+            if (container && !googleBtnRenderedRef.current) {
+                window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' });
+                googleBtnRenderedRef.current = true;
+            }
+            setGoogleReady(true);
+        } catch (e) {
+            console.error('Google init error', e);
+            setError('Google init failed');
+        }
+    };
+
+    useEffect(() => {
+        loadGoogleScript().then(initGoogle).catch(err => {
+            console.error('Google script load failed', err);
+            setError('Failed to load Google services');
+        });
+    }, []);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-violet-800 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -180,6 +244,30 @@ const Login = () => {
                         {/* Google Sign In */}
                         <button
                             type="button"
+                            onClick={async () => {
+                                setError('');
+                                if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+                                    setError('Google Client ID missing');
+                                    return;
+                                }
+                                if (!googleReady) {
+                                    await loadGoogleScript();
+                                    await initGoogle();
+                                }
+                                if (window.google?.accounts?.id) {
+                                    // Show One Tap / popup
+                                    window.google.accounts.id.prompt((notification) => {
+                                        if (notification.isNotDisplayed()) {
+                                            console.log('One Tap not displayed:', notification.getNotDisplayedReason());
+                                        }
+                                        if (notification.isSkippedMoment()) {
+                                            console.log('One Tap skipped:', notification.getSkippedReason());
+                                        }
+                                    });
+                                } else {
+                                    setError('Google auth not ready');
+                                }
+                            }}
                             className="w-full glass-card py-4 px-6 rounded-2xl font-semibold text-white hover:scale-105 transition-all duration-300 flex items-center justify-center group wiggle-hover animate-slide-up"
                             style={{ animationDelay: '0.5s' }}
                         >
@@ -188,7 +276,7 @@ const Login = () => {
                                 alt="Google"
                                 className="w-6 h-6 mr-3 group-hover:scale-110 transition-transform"
                             />
-                            🌟 Sign in with Google
+                            {googleReady ? '🌟 Sign in with Google' : '⏳ Loading Google...'}
                         </button>
 
                         {/* Sign Up Link */}
