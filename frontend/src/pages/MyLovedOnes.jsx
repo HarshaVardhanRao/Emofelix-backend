@@ -10,72 +10,20 @@ import {
     Crown,
     Baby,
     Sparkles,
-    Lock
+    Lock,
+    Settings
 } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
-
-// Character templates with personal touches and rotating emotions
-const characterTemplates = {
-    'Mother': {
-        icon: '👩‍❤️‍👨',
-        emoji: '💝',
-        title: 'My Mom',
-        description: 'Always there with love, advice, and warm hugs',
-        gradient: 'from-pink-400 to-rose-500',
-        emotions: ['Nurturing & Wise', 'Warm & Caring', 'Loving & Patient', 'Gentle & Understanding', 'Protective & Kind'],
-        voice: 'Warm Mother'
-    },
-    'Father': {
-        icon: '👨‍👧‍👦',
-        emoji: '💪',
-        title: 'My Dad',
-        description: 'Strong, protective, and full of dad jokes',
-        gradient: 'from-blue-400 to-indigo-500',
-        emotions: ['Protective & Supportive', 'Strong & Reliable', 'Wise & Encouraging', 'Confident & Steady', 'Brave & Loving'],
-        voice: 'Strong Father'
-    },
-    'Sister': {
-        icon: '👭',
-        emoji: '✨',
-        title: 'My Sister',
-        description: 'Your partner in crime and best confidante',
-        gradient: 'from-purple-400 to-pink-500',
-        emotions: ['Playful & Understanding', 'Fun & Supportive', 'Cheerful & Loyal', 'Bubbly & Sweet', 'Energetic & Caring'],
-        voice: 'Sisterly & Fun'
-    },
-    'Brother': {
-        icon: '👬',
-        emoji: '🤝',
-        title: 'My Brother',
-        description: 'Always has your back, teases but cares deeply',
-        gradient: 'from-green-400 to-blue-500',
-        emotions: ['Brotherly & Loyal', 'Cool & Protective', 'Funny & Caring', 'Adventurous & Fun', 'Supportive & Strong'],
-        voice: 'Brotherly & Cool'
-    },
-    'Partner': {
-        icon: '💑',
-        emoji: '💕',
-        title: 'My Love',
-        description: 'Your soulmate, best friend, and life companion',
-        gradient: 'from-red-400 to-pink-500',
-        emotions: ['Romantic & Caring', 'Loving & Passionate', 'Tender & Sweet', 'Devoted & Warm', 'Affectionate & Kind'],
-        voice: 'Loving Partner'
-    },
-    'Friend': {
-        icon: '👫',
-        emoji: '🌟',
-        title: 'My Best Friend',
-        description: 'Understands you completely, always fun to be around',
-        gradient: 'from-yellow-400 to-orange-500',
-        emotions: ['Fun & Loyal', 'Cheerful & Supportive', 'Adventurous & Kind', 'Upbeat & Caring', 'Energetic & Understanding'],
-        voice: 'Friendly & Cheerful'
-    }
-};
 
 const MyLovedOnes = () => {
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentEmotionIndex, setCurrentEmotionIndex] = useState({});
+
+    // Edit modal state
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingCharacter, setEditingCharacter] = useState(null);
+    const [editForm, setEditForm] = useState({ name: '', emotion_model: '', voice_model: '' });
 
     useEffect(() => {
         fetchCharacters();
@@ -107,6 +55,7 @@ const MyLovedOnes = () => {
     const fetchCharacters = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/characters/`);
+            console.log('Fetched characters:', response);
             setCharacters(response.data);
 
             // Initialize emotion indices
@@ -123,7 +72,7 @@ const MyLovedOnes = () => {
     };
 
     const getCharacterTemplate = (characterType) => {
-        return characterTemplates[characterType] || {
+        return characters[characterType] || {
             emoji: '💝',
             gradient: 'from-warm-400 to-love-500',
             title: characterType,
@@ -136,6 +85,35 @@ const MyLovedOnes = () => {
         const template = getCharacterTemplate(character.character_type);
         const index = currentEmotionIndex[character.id] || 0;
         return template.emotions[index] || template.emotions[0];
+    };
+
+    const openEditModal = (character) => {
+        setEditingCharacter(character);
+        setEditForm({
+            name: character.name || '',
+            emotion_model: character.emotion_model || '',
+            voice_model: character.voice_model || ''
+        });
+        setShowEditModal(true);
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleUpdateCharacter = async (e) => {
+        e.preventDefault();
+        if (!editingCharacter) return;
+        try {
+            await axios.patch(`${API_BASE_URL}/api/characters/${editingCharacter.id}/`, editForm);
+            setShowEditModal(false);
+            setEditingCharacter(null);
+            await fetchCharacters();
+        } catch (error) {
+            console.error('Failed to update character:', error);
+            alert(error.response?.data?.detail || 'Update failed');
+        }
     };
 
     if (loading) {
@@ -196,7 +174,16 @@ const MyLovedOnes = () => {
                             {characters.map((character) => {
                                 const template = getCharacterTemplate(character.character_type);
                                 return (
-                                    <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${character.is_unlocked ? 'border-love-400/20' : 'border-gray-500/20'}`}>
+                                    <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${character.is_unlocked ? 'border-love-400/20' : 'border-gray-500/20'} relative`}>
+                                        {/* Settings button */}
+                                        <button
+                                            onClick={() => character.is_unlocked ? openEditModal(character) : alert('Unlock this character to edit details')}
+                                            className={`absolute top-3 right-3 p-2 rounded-full glass transition-transform ${character.is_unlocked ? 'hover:scale-110 text-white/80 hover:text-white' : 'opacity-60 cursor-pointer text-white/50'}`}
+                                            title={character.is_unlocked ? 'Edit details' : 'Unlock to edit'}
+                                        >
+                                            <Settings className="h-5 w-5" />
+                                        </button>
+
                                         {/* Avatar and Basic Info */}
                                         <div className="flex items-center space-x-4 mb-6">
                                             <div className={`w-16 h-16 bg-gradient-to-br ${template.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
@@ -256,6 +243,68 @@ const MyLovedOnes = () => {
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Edit Character Modal */}
+                {showEditModal && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Details</h2>
+                            <form onSubmit={handleUpdateCharacter} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input
+                                        name="name"
+                                        type="text"
+                                        value={editForm.name}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        placeholder="Enter name"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Emotion Model</label>
+                                    <input
+                                        name="emotion_model"
+                                        type="text"
+                                        value={editForm.emotion_model}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        placeholder="e.g., Empathetic"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Voice Model</label>
+                                    <input
+                                        name="voice_model"
+                                        type="text"
+                                        value={editForm.voice_model}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        placeholder="e.g., Warm Female"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex space-x-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowEditModal(false); setEditingCharacter(null); }}
+                                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 )}
