@@ -39,5 +39,6 @@ urlpatterns = [
     path('api/notifications/', views.ApiNotificationListView.as_view(), name='api-notifications'),
     path('api/call-history/', views.ApiCallHistoryListView.as_view(), name='api-call-history'),
     path('api/relations/<int:relation_id>/start-call/', views.StartCallView.as_view(), name='api-start-call'),
+    path('api/characters/<int:character_id>/start-call/', views.StartCharacterCallView.as_view(), name='api-start-character-call'),
     path('api/chat/gemini/stream/', views.GeminiChatStreamView.as_view(), name='api-gemini-chat-stream'),
 ]

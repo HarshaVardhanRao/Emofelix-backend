@@ -236,6 +236,28 @@ class StartCallView(APIView):
             'emotion_model': relation.emotion_model,
         })
 
+class StartCharacterCallView(APIView):
+    """API Endpoint to prepare a call with a specific character (by character id)."""
+    permission_classes = [IsAuthenticated]
+    def post(self, request, character_id):
+        character = get_object_or_404(Character, pk=character_id, user=request.user)
+        # Optionally, persist preferences or log an intent here
+        call_type = request.data.get('call_type')
+        mood = request.data.get('mood')
+        topic = request.data.get('topic')
+        additional_details = request.data.get('additional_details')
+        language = request.data.get('language')
+        return Response({
+            'message': f"Preparing {call_type or 'chat'} with {character.name}",
+            'character_id': character.id,
+            'voice_model': character.voice_model,
+            'emotion_model': character.emotion_model,
+            'mood': mood,
+            'topic': topic,
+            'additional_details': additional_details,
+            'language': language,
+        })
+
 class ApiNotificationListView(generics.ListAPIView):
     """API Endpoint to list notifications for the user."""
     permission_classes = [IsAuthenticated]

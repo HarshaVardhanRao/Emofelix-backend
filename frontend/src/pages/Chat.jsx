@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
@@ -17,7 +17,6 @@ import { API_BASE_URL, GEMINI_CHAT_STREAM_URL } from '../apiBase';
 
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { user, token } = useAuth();
     const [character, setCharacter] = useState(null);
@@ -27,81 +26,181 @@ const Chat = () => {
     const [sending, setSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [callPreferences, setCallPreferences] = useState(null);
-    const [isInCall, setIsInCall] = useState(false);
     const messagesEndRef = useRef(null);
 
     const fetchCharacter = useCallback(async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/characters/${relationId}/`);
             setCharacter(response.data);
+            return response.data;
         } catch (error) {
             console.error('Failed to fetch character:', error);
             navigate('/loved-ones');
         }
     }, [relationId, navigate]);
 
-    const getMoodBasedMessage = (mood, name) => {
-        const moodMessages = [
-            `Oh my dear ${name}, I can sense you're feeling quite low today. I'm here for you, and we'll get through this together. 🤗💕`,
-            `I notice you're having a tough time, ${name}. Please know that I love you and I'm here to listen. 😢💝`,
-            `${name}, it seems like today is challenging for you. Let's talk about what's on your heart. 🫂`,
-            `Hi ${name}, I can see you're feeling neutral today. That's perfectly okay - I'm here to chat whenever you're ready. 😊`,
-            `Hello ${name}! You seem to be doing okay today. I'm happy to spend this time with you. 💖`,
-            `Hi there, ${name}! I'm glad to see you're feeling good today. What would you like to talk about? 😊💕`,
-            `${name}! I can feel your positive energy today! I'm so happy to chat with you. 😄✨`,
-            `Wonderful to see you so happy, ${name}! Your joy brings warmth to my heart. Let's have a great conversation! 🤩💫`,
-            `${name}, you're absolutely glowing with excitement today! I love seeing you this way. Tell me what's making you so happy! 🥰🌟`,
-            `My dearest ${name}, you're radiating such beautiful joy today! I'm overjoyed to spend this time with you. 💕✨`
-        ];
-        return moodMessages[mood] || moodMessages[5];
-    };
+    // Helper to stream the initial greeting from Gemini (fire-and-forget)
+    const streamInitialGreeting = useCallback(({ relationType, mood, topic, additionalDetails, nickname }) => {
+        const controller = new AbortController();
+        const { signal } = controller;
 
-    const handleEndCall = () => {
-        setIsInCall(false);
-        navigate('/loved-ones');
-    };
+        console.info('[Gemini] Starting initial greeting stream...');
 
-    useEffect(() => {
-        const initializeChat = async () => {
-            await fetchCharacter();
+        // Start with a typing indicator (no default text)
+        const typingId = Date.now();
+        setMessages([
+            {
+                id: typingId,
+                content: '',
+                sender: 'ai',
+                timestamp: new Date().toISOString(),
+                typing: true
+            }
+        ]);
 
-            // Get call preferences from sessionStorage
-            const savedPreferences = sessionStorage.getItem('callPreferences');
-            if (savedPreferences) {
-                const preferences = JSON.parse(savedPreferences);
-                setCallPreferences(preferences);
-                setIsInCall(true);
+        (async () => {
+            try {
+                const body = {
+                    message: 'Start the conversation with a warm, supportive greeting tailored to the provided context and ask a gentle opening question.',
+                    relation_type: relationType || 'Friend',
+                    mood: mood || 'Neutral',
+                    topic: topic || 'General conversation',
+                    additional_details: additionalDetails || '',
+                    nickname: nickname || '',
+                    history: []
+                };
 
-                // Generate personalized welcome message based on mood and preferences
-                const moodMessage = getMoodBasedMessage(preferences.mood, 'dear');
-                setMessages([
+                const response = await fetch(GEMINI_CHAT_STREAM_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Token ${token}`,
+                    },
+                    body: JSON.stringify(body),
+                    signal,
+                });
+
+                if (!response.ok || !response.body) {
+                    throw new Error('Failed to fetch initial greeting');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiResponse = '';
+
+                // Replace typing with an empty AI message we will fill progressively
+                setMessages(prev => prev.filter(msg => !msg.typing));
+                const aiMessageId = typingId + 1;
+                setMessages(prev => [
+                    ...prev,
                     {
-                        id: 1,
-                        content: moodMessage,
+                        id: aiMessageId,
+                        content: '',
                         sender: 'ai',
                         timestamp: new Date().toISOString()
                     }
                 ]);
 
-                // Clear preferences from storage
-                sessionStorage.removeItem('callPreferences');
-            } else {
-                // Default welcome message
-                setMessages([
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const word = line.slice(6);
+                            if (word.trim() && word !== '[END]') {
+                                aiResponse += word + ' ';
+                                const content = aiResponse.trim();
+                                if (content) {
+                                    setMessages(prev => prev.map(msg =>
+                                        msg.id === aiMessageId ? { ...msg, content } : msg
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                console.info('[Gemini] Initial greeting stream completed');
+            } catch (err) {
+                console.error('Initial greeting failed:', err);
+                // Remove typing and show default fallback only on error
+                const defaultMsg = "Hello my dear! I'm so happy to see you today. How are you feeling? 💝";
+                setMessages(prev => prev.filter(msg => !msg.typing));
+                setMessages(prev => [
+                    ...prev,
                     {
-                        id: 1,
-                        content: "Hello my dear! I'm so happy to see you today. How are you feeling? 💝",
+                        id: typingId + 2,
+                        content: defaultMsg,
                         sender: 'ai',
                         timestamp: new Date().toISOString()
                     }
                 ]);
             }
+        })();
 
-            setLoading(false);
+        return () => controller.abort();
+    }, [token]);
+
+    useEffect(() => {
+        // Wait for auth token before starting initial greeting
+        if (!token) return;
+
+        // Dev-only guard to avoid double stream in React StrictMode
+        if (import.meta.env.DEV) {
+            window.CHAT_INIT_ONCE = window.CHAT_INIT_ONCE || {};
+            if (window.CHAT_INIT_ONCE[relationId]) {
+                return;
+            }
+            window.CHAT_INIT_ONCE[relationId] = true;
+        }
+
+        const initializeChat = () => {
+            fetchCharacter().then((characterData) => {
+                // Get call preferences from sessionStorage
+                const savedPreferences = sessionStorage.getItem('callPreferences');
+                let cleanup;
+                if (savedPreferences) {
+                    const preferences = JSON.parse(savedPreferences);
+                    setCallPreferences(preferences);
+                    const additional = [preferences?.additionalDetails, preferences?.language ? `Preferred language: ${preferences.language}` : '']
+                        .filter(Boolean)
+                        .join('\n');
+
+                    cleanup = streamInitialGreeting({
+                        relationType: characterData?.character_type,
+                        mood: preferences?.moodLabel || preferences?.mood,
+                        topic: preferences?.topic,
+                        additionalDetails: additional,
+                        nickname: (user?.first_name || user?.username),
+                    });
+
+                    sessionStorage.removeItem('callPreferences');
+                } else {
+                    cleanup = streamInitialGreeting({
+                        relationType: characterData?.character_type,
+                        mood: 'Neutral',
+                        topic: 'General conversation',
+                        additionalDetails: '',
+                        nickname: (user?.first_name || user?.username),
+                    });
+                }
+
+                setLoading(false);
+
+                if (typeof cleanup === 'function') {
+                    return cleanup;
+                }
+            });
         };
 
-        initializeChat();
-    }, [relationId, fetchCharacter]); useEffect(() => {
+        const cleanup = initializeChat();
+        return () => {
+            if (typeof cleanup === 'function') cleanup();
+        };
+    }, [relationId, fetchCharacter, user, streamInitialGreeting, token]);
+
+    useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
