@@ -39,6 +39,7 @@ urlpatterns = [
 
     # API Data Endpoints
     path('api/profile/', views.ProfileView.as_view(), name='api-profile'),
+    path('api/change-password/', views.ChangePasswordView.as_view(), name='api-change-password'),
     path('api/custom-characters/create-custom/', views.CreateCustomCharacterView.as_view(), name='api-create-custom-character'),
     path('api/custom-characters/options/', views.GetCustomCharacterOptionsView.as_view(), name='api-character-options'),
     path('api/notifications/', views.ApiNotificationListView.as_view(), name='api-notifications'),

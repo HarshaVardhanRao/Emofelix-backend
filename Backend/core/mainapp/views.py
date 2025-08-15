@@ -338,6 +338,43 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+class ChangePasswordView(APIView):
+    """API Endpoint for changing user password."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not current_password or not new_password:
+            return Response(
+                {'error': 'Both current password and new password are required.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verify current password
+        if not request.user.check_password(current_password):
+            return Response(
+                {'error': 'Current password is incorrect.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate new password length
+        if len(new_password) < 6:
+            return Response(
+                {'error': 'New password must be at least 6 characters long.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+
+        return Response(
+            {'message': 'Password changed successfully.'}, 
+            status=status.HTTP_200_OK
+        )
+
 class RelationViewSet(viewsets.ModelViewSet):
     """CRUD API endpoint for Relations."""
     permission_classes = [IsAuthenticated]
