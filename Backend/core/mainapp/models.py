@@ -8,6 +8,7 @@ from django.contrib.auth.models import AbstractUser
 # -------------------------------
 class CustomUser(AbstractUser):
     # You can add additional fields here if needed in the future
+    emocoins = models.PositiveIntegerField(default=0, help_text="Emocoins earned through activities.")
     def __str__(self):
         return self.username
 
@@ -34,16 +35,14 @@ class Character(models.Model):
     emotion_model = models.CharField(max_length=100)
     voice_model = models.CharField(max_length=100)
     nickname = models.CharField(max_length=100, help_text="What the character usually calls the user.", blank=True)
-    is_unlocked = models.BooleanField(default=False)
-    unlock_order = models.PositiveIntegerField(default=0)  # Order in which they should be unlocked
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['unlock_order', 'created_at']
+        ordering = ['created_at']
         unique_together = ['user', 'character_type']  # One character per type per user
 
     def __str__(self):
-        return f"{self.name} ({self.character_type}) - {'Unlocked' if self.is_unlocked else 'Locked'}"
+        return f"{self.name} ({self.character_type})"
 
 # -------------------------------
 # Relations (Legacy - keeping for backward compatibility)
@@ -160,3 +159,4 @@ class ReferralProgram(models.Model):
     referred_user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="referred_by")
     referral_token = models.CharField(max_length=20, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    

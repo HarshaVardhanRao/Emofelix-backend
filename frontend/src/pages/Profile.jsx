@@ -23,7 +23,8 @@ const Profile = () => {
     const [profile, setProfile] = useState({
         first_name: '',
         last_name: '',
-        email: ''
+        email: '',
+        emocoins: 0
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -274,6 +275,13 @@ const Profile = () => {
                                         <span className="text-sm text-gray-600">Total Chats</span>
                                     </div>
                                     <span className="font-semibold text-gray-900">{stats.totalChats}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-lg">💰</span>
+                                        <span className="text-sm text-gray-600">Emocoins</span>
+                                    </div>
+                                    <span className="font-semibold text-primary-600">{profile.emocoins || 0}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">

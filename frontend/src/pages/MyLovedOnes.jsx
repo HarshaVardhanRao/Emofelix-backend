@@ -15,52 +15,135 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
 
+// Default characters configuration - stored in frontend
+const DEFAULT_CHARACTERS = [
+    {
+        id: 'mother',
+        name: 'Mom',
+        character_type: 'Mother',
+        emotion_model: 'Warm & Nurturing',
+        voice_model: 'Gentle & Caring',
+        unlock_order: 1,
+        emoji: '👩‍❤️‍👨',
+        gradient: 'from-pink-400 to-rose-500',
+        title: 'Your Loving Mother',
+        description: 'Always there with unconditional love and care',
+        emotions: ['Nurturing', 'Caring', 'Protective', 'Wise', 'Comforting']
+    },
+    {
+        id: 'father',
+        name: 'Dad',
+        character_type: 'Father',
+        emotion_model: 'Strong & Supportive',
+        voice_model: 'Deep & Reassuring',
+        unlock_order: 2,
+        emoji: '👨‍👧‍👦',
+        gradient: 'from-blue-400 to-indigo-500',
+        title: 'Your Supportive Father',
+        description: 'Strong guidance and unwavering support',
+        emotions: ['Supportive', 'Strong', 'Protective', 'Encouraging', 'Reliable']
+    },
+    {
+        id: 'friend',
+        name: 'Best Friend',
+        character_type: 'Friend',
+        emotion_model: 'Fun & Understanding',
+        voice_model: 'Cheerful & Friendly',
+        unlock_order: 3,
+        emoji: '👫',
+        gradient: 'from-green-400 to-teal-500',
+        title: 'Your Best Friend',
+        description: 'Fun conversations and loyal friendship',
+        emotions: ['Fun', 'Loyal', 'Understanding', 'Adventurous', 'Supportive']
+    },
+    {
+        id: 'sister',
+        name: 'Sister',
+        character_type: 'Sister',
+        emotion_model: 'Playful & Loyal',
+        voice_model: 'Sweet & Bubbly',
+        unlock_order: 4,
+        emoji: '👭',
+        gradient: 'from-purple-400 to-pink-500',
+        title: 'Your Sweet Sister',
+        description: 'Playful bond and sisterly love',
+        emotions: ['Playful', 'Loyal', 'Sweet', 'Caring', 'Energetic']
+    },
+    {
+        id: 'partner',
+        name: 'Partner',
+        character_type: 'Partner',
+        emotion_model: 'Romantic & Caring',
+        voice_model: 'Intimate & Loving',
+        unlock_order: 5,
+        emoji: '💑',
+        gradient: 'from-red-400 to-pink-500',
+        title: 'Your Loving Partner',
+        description: 'Romantic connection and deep understanding',
+        emotions: ['Romantic', 'Caring', 'Intimate', 'Understanding', 'Passionate']
+    }
+];
+
 const MyLovedOnes = () => {
-    const [characters, setCharacters] = useState([]);
+    const [unlockedCharacters, setUnlockedCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentEmotionIndex, setCurrentEmotionIndex] = useState({});
+    const [userProfile, setUserProfile] = useState({ emocoins: 0 });
 
     // Edit modal state
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingCharacter, setEditingCharacter] = useState(null);
-    const [editForm, setEditForm] = useState({ name: '', emotion_model: '', voice_model: '' });
+    const [editForm, setEditForm] = useState({ name: '', emotion_model: '', voice_model: '', nickname: '' });
+
+    // Unlock modal state
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [unlockingCharacter, setUnlockingCharacter] = useState(null);
+    const [unlockLoading, setUnlockLoading] = useState(false);
+    const [unlockForm, setUnlockForm] = useState({
+        nickname: '',
+        selectedEmotion: ''
+    });
 
     useEffect(() => {
-        fetchCharacters();
+        fetchUnlockedCharacters();
+        fetchUserProfile();
     }, []);
+
+    const fetchUserProfile = async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/api/profile/`);
+            setUserProfile(response.data);
+        } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+        }
+    };
 
     useEffect(() => {
         // Set up emotion rotation timer
         const emotionTimer = setInterval(() => {
             setCurrentEmotionIndex(prev => {
                 const newIndex = { ...prev };
-                characters.forEach(character => {
-                    const template = getCharacterTemplate(character.character_type);
+                DEFAULT_CHARACTERS.forEach(character => {
                     const currentIndex = newIndex[character.id] || 0;
-                    const nextIndex = (currentIndex + 1) % template.emotions.length;
+                    const nextIndex = (currentIndex + 1) % character.emotions.length;
                     newIndex[character.id] = nextIndex;
-
-                    // Optional: Log emotion changes for debugging
-                    if (character.is_unlocked) {
-                        console.log(`${character.name} emotion changed to: ${template.emotions[nextIndex]}`);
-                    }
                 });
                 return newIndex;
             });
         }, 5000); // Change every 5 seconds
 
         return () => clearInterval(emotionTimer);
-    }, [characters]);
+    }, []);
 
-    const fetchCharacters = async () => {
+    const fetchUnlockedCharacters = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/characters/`);
-            console.log('Fetched characters:', response);
-            setCharacters(response.data);
+            console.log('Fetched unlocked characters:', response);
+            setUnlockedCharacters(response.data);
 
-            // Initialize emotion indices
+            // Initialize emotion indices for all characters
             const initialIndices = {};
-            response.data.forEach(character => {
+            DEFAULT_CHARACTERS.forEach(character => {
                 initialIndices[character.id] = 0;
             });
             setCurrentEmotionIndex(initialIndices);
@@ -71,33 +154,35 @@ const MyLovedOnes = () => {
         }
     };
 
-    const getCharacterTemplate = (characterType) => {
-        return characters[characterType] || {
-            emoji: '💝',
-            gradient: 'from-warm-400 to-love-500',
-            title: characterType,
-            description: 'A special person in your life',
-            emotions: ['Special & Unique']
-        };
+    // Helper function to check if character is unlocked
+    const isCharacterUnlocked = (characterId) => {
+        return unlockedCharacters.some(uc => uc.character_type === DEFAULT_CHARACTERS.find(dc => dc.id === characterId)?.character_type);
+    };
+
+    // Helper function to get unlocked character data
+    const getUnlockedCharacterData = (characterId) => {
+        const defaultChar = DEFAULT_CHARACTERS.find(dc => dc.id === characterId);
+        return unlockedCharacters.find(uc => uc.character_type === defaultChar?.character_type);
     };
 
     const getCurrentEmotion = (character) => {
-        const template = getCharacterTemplate(character.character_type);
         const index = currentEmotionIndex[character.id] || 0;
-        return template.emotions[index] || template.emotions[0];
+        return character.emotions[index] || character.emotions[0];
     };
 
     const openEditModal = (character) => {
-        setEditingCharacter(character);
+        const unlockedData = getUnlockedCharacterData(character.id);
+        if (!unlockedData) return;
+        
+        setEditingCharacter(unlockedData);
         setEditForm({
-            name: character.name || '',
-            emotion_model: character.emotion_model || '',
-            voice_model: character.voice_model || ''
+            name: unlockedData.name || character.name,
+            emotion_model: unlockedData.emotion_model || character.emotion_model,
+            voice_model: unlockedData.voice_model || character.voice_model,
+            nickname: unlockedData.nickname || ''
         });
         setShowEditModal(true);
-    };
-
-    const handleEditChange = (e) => {
+    };    const handleEditChange = (e) => {
         const { name, value } = e.target;
         setEditForm(prev => ({ ...prev, [name]: value }));
     };
@@ -109,14 +194,84 @@ const MyLovedOnes = () => {
             await axios.patch(`${API_BASE_URL}/api/characters/${editingCharacter.id}/`, editForm);
             setShowEditModal(false);
             setEditingCharacter(null);
-            await fetchCharacters();
+            await fetchUnlockedCharacters();
         } catch (error) {
             console.error('Failed to update character:', error);
             alert(error.response?.data?.detail || 'Update failed');
         }
     };
 
-    if (loading) {
+    const handleUnlockCharacter = async (character) => {
+        if (userProfile.emocoins < 5) {
+            alert(`You need 5 emocoins to unlock ${character.name}. You currently have ${userProfile.emocoins} emocoins.`);
+            return;
+        }
+
+        setUnlockingCharacter(character);
+        setUnlockForm({
+            nickname: '', // User can enter what the character should call them
+            selectedEmotion: character.emotions[0] // Default to first emotion
+        });
+        setShowUnlockModal(true);
+    };
+
+    const handleUnlockFormChange = (e) => {
+        const { name, value } = e.target;
+        setUnlockForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const confirmUnlockCharacter = async () => {
+        if (!unlockingCharacter) return;
+
+        // Validate form
+        if (!unlockForm.nickname.trim()) {
+            alert('Please enter a nickname for the character to call you.');
+            return;
+        }
+
+        setUnlockLoading(true);
+        try {
+            // Create the character in the database when unlocking
+            const characterData = {
+                name: unlockingCharacter.name,
+                character_type: unlockingCharacter.character_type,
+                emotion_model: unlockForm.selectedEmotion,
+                voice_model: unlockingCharacter.voice_model,
+                nickname: unlockForm.nickname.trim()
+            };
+
+            const response = await axios.post(`${API_BASE_URL}/api/characters/`, characterData);
+
+            if (response.status === 201) {
+                // Deduct emocoins
+                await axios.patch(`${API_BASE_URL}/api/profile/`, {
+                    emocoins: userProfile.emocoins - 5
+                });
+
+                alert(`🎉 Successfully unlocked ${unlockingCharacter.name}! They will call you "${unlockForm.nickname}".`);
+                await fetchUnlockedCharacters();
+                await fetchUserProfile();
+                setShowUnlockModal(false);
+                setUnlockingCharacter(null);
+                setUnlockForm({ nickname: '', selectedEmotion: '' });
+
+                // Trigger navbar update
+                window.dispatchEvent(new CustomEvent('emocoinsUpdated'));
+            }
+        } catch (error) {
+            console.error('Failed to unlock character:', error);
+            const errorMessage = error.response?.data?.error || 'Failed to unlock character';
+            alert(errorMessage);
+        } finally {
+            setUnlockLoading(false);
+        }
+    };
+
+    const cancelUnlock = () => {
+        setShowUnlockModal(false);
+        setUnlockingCharacter(null);
+        setUnlockForm({ nickname: '', selectedEmotion: '' });
+    }; if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800 flex items-center justify-center">
                 <div className="text-center">
@@ -155,6 +310,14 @@ const MyLovedOnes = () => {
                         <Heart className="w-5 h-5 mr-3 text-love-400 animate-warm-pulse" />
                         💕 Your Circle of Love
                     </div>
+
+                    {/* Emocoins Display */}
+                    <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full text-white text-base font-medium mb-6 border border-yellow-400/30 backdrop-blur-sm">
+                        <span className="text-xl mr-2">💰</span>
+                        <span className="font-bold text-yellow-200">{userProfile.emocoins}</span>
+                        <span className="ml-1 text-yellow-300">Emocoins</span>
+                    </div>
+
                     <h1 className="text-5xl lg:text-6xl font-black text-white mb-4">
                         Your <span className="loving-text">Characters</span>
                     </h1>
@@ -165,87 +328,91 @@ const MyLovedOnes = () => {
                 </div>
 
                 {/* My Characters Section */}
-                {characters.length > 0 && (
-                    <div className="mb-16">
-                        <h2 className="text-3xl font-bold text-white mb-8 text-center">
-                            💬 Your Characters
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {characters.map((character) => {
-                                const template = getCharacterTemplate(character.character_type);
-                                return (
-                                    <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${character.is_unlocked ? 'border-love-400/20' : 'border-gray-500/20'} relative`}>
-                                        {/* Settings button */}
-                                        <button
-                                            onClick={() => character.is_unlocked ? openEditModal(character) : alert('Unlock this character to edit details')}
-                                            className={`absolute top-3 right-3 p-2 rounded-full glass transition-transform ${character.is_unlocked ? 'hover:scale-110 text-white/80 hover:text-white' : 'opacity-60 cursor-pointer text-white/50'}`}
-                                            title={character.is_unlocked ? 'Edit details' : 'Unlock to edit'}
-                                        >
-                                            <Settings className="h-5 w-5" />
-                                        </button>
+                <div className="mb-16">
+                    <h2 className="text-3xl font-bold text-white mb-8 text-center">
+                        💬 Your Characters
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {DEFAULT_CHARACTERS.map((character) => {
+                            const isUnlocked = isCharacterUnlocked(character.id);
+                            const unlockedData = isUnlocked ? getUnlockedCharacterData(character.id) : null;
+                            const displayName = unlockedData?.name || character.name;
 
-                                        {/* Avatar and Basic Info */}
-                                        <div className="flex items-center space-x-4 mb-6">
-                                            <div className={`w-16 h-16 bg-gradient-to-br ${template.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
-                                                {template.emoji}
-                                                {!character.is_unlocked && (
-                                                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                                        <Lock className="h-6 w-6 text-white" />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <h3 className={`text-xl font-bold ${character.is_unlocked ? 'text-white group-hover:loving-text' : 'text-gray-400'} transition-all`}>
-                                                    {character.name}
-                                                </h3>
-                                                <p className={`${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'}`}>
-                                                    {character.character_type}
-                                                </p>
-                                                {!character.is_unlocked && (
-                                                    <div className="flex items-center mt-1">
-                                                        <Lock className="h-3 w-3 text-gray-500 mr-1" />
-                                                        <span className="text-xs text-gray-500">Locked</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                            return (
+                                <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${isUnlocked ? 'border-love-400/20' : 'border-gray-500/20'} relative`}>
+                                    {/* Settings button */}
+                                    <button
+                                        onClick={() => isUnlocked ? openEditModal(character) : alert('Unlock this character to edit details')}
+                                        className={`absolute top-3 right-3 p-2 rounded-full glass transition-transform ${isUnlocked ? 'hover:scale-110 text-white/80 hover:text-white' : 'opacity-60 cursor-pointer text-white/50'}`}
+                                        title={isUnlocked ? 'Edit details' : 'Unlock to edit'}
+                                    >
+                                        <Settings className="h-5 w-5" />
+                                    </button>
+
+                                    {/* Avatar and Basic Info */}
+                                    <div className="flex items-center space-x-4 mb-6">
+                                        <div className={`w-16 h-16 bg-gradient-to-br ${character.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
+                                            {character.emoji}
+                                            {!isUnlocked && (
+                                                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                                    <Lock className="h-6 w-6 text-white" />
+                                                </div>
+                                            )}
                                         </div>
-
-                                        {/* Quick Info with animated emotion changes */}
-                                        <div className="space-y-2 mb-6">
-                                            <div className="flex items-center space-x-2 group/emotion">
-                                                <Sparkles className={`h-4 w-4 ${character.is_unlocked ? 'text-warm-400' : 'text-gray-500'} transition-all duration-700 group-hover/emotion:scale-110 ${character.is_unlocked ? 'animate-pulse' : ''}`} />
-                                                <span
-                                                    className={`text-sm ${character.is_unlocked ? 'text-pink-200' : 'text-gray-500'} transition-all duration-700 font-medium group-hover/emotion:text-warm-300`}
-                                                    style={{
-                                                        textShadow: character.is_unlocked ? '0 0 10px rgba(255, 182, 193, 0.3)' : 'none'
-                                                    }}
-                                                >
-                                                    {getCurrentEmotion(character)}
-                                                </span>
-                                            </div>
+                                        <div>
+                                            <h3 className={`text-xl font-bold ${isUnlocked ? 'text-white group-hover:loving-text' : 'text-gray-400'} transition-all`}>
+                                                {displayName}
+                                            </h3>
+                                            <p className={`${isUnlocked ? 'text-pink-200' : 'text-gray-500'}`}>
+                                                {character.character_type}
+                                            </p>
+                                            {!isUnlocked && (
+                                                <div className="flex items-center mt-1">
+                                                    <Lock className="h-3 w-3 text-gray-500 mr-1" />
+                                                    <span className="text-xs text-gray-500">Locked</span>
+                                                </div>
+                                            )}
                                         </div>
-
-                                        {/* Action Button */}
-                                        {character.is_unlocked ? (
-                                            <Link
-                                                to={`/call-setup/${character.id}`}
-                                                className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
-                                            >
-                                                <MessageCircle className="h-5 w-5 mr-2" />
-                                                💬 Start Chatting
-                                            </Link>
-                                        ) : (
-                                            <div className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold rounded-2xl cursor-not-allowed opacity-75">
-                                                <Lock className="h-5 w-5 mr-2" />
-                                                � Coming Soon
-                                            </div>
-                                        )}
                                     </div>
-                                );
-                            })}
-                        </div>
+
+                                    {/* Quick Info with animated emotion changes */}
+                                    <div className="space-y-2 mb-6">
+                                        <div className="flex items-center space-x-2 group/emotion">
+                                            <Sparkles className={`h-4 w-4 ${isUnlocked ? 'text-warm-400' : 'text-gray-500'} transition-all duration-700 group-hover/emotion:scale-110 ${isUnlocked ? 'animate-pulse' : ''}`} />
+                                            <span
+                                                className={`text-sm ${isUnlocked ? 'text-pink-200' : 'text-gray-500'} transition-all duration-700 font-medium group-hover/emotion:text-warm-300`}
+                                                style={{
+                                                    textShadow: isUnlocked ? '0 0 10px rgba(255, 182, 193, 0.3)' : 'none'
+                                                }}
+                                            >
+                                                {getCurrentEmotion(character)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    {isUnlocked ? (
+                                        <Link
+                                            to={`/call-setup/${unlockedData.id}`}
+                                            className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
+                                        >
+                                            <MessageCircle className="h-5 w-5 mr-2" />
+                                            💬 Start Chatting
+                                        </Link>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleUnlockCharacter(character)}
+                                            className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-400/25"
+                                        >
+                                            <span className="text-xl mr-2">💰</span>
+                                            Unlock for 5 coins
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
-                )}
+                </div>
 
                 {/* Edit Character Modal */}
                 {showEditModal && (
@@ -264,6 +431,19 @@ const MyLovedOnes = () => {
                                         placeholder="Enter name"
                                         required
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nickname (What they call you)</label>
+                                    <input
+                                        name="nickname"
+                                        type="text"
+                                        value={editForm.nickname}
+                                        onChange={handleEditChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                        placeholder="e.g., Sweetie, Champ, Honey"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">How this character addresses you in conversations</p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Emotion Model</label>
@@ -309,8 +489,114 @@ const MyLovedOnes = () => {
                     </div>
                 )}
 
+                {/* Unlock Character Modal */}
+                {showUnlockModal && unlockingCharacter && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span className="text-2xl">💰</span>
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">Unlock {unlockingCharacter.name}</h2>
+                                <p className="text-gray-600 mb-4">
+                                    Customize your <strong>{unlockingCharacter.character_type}</strong> before unlocking
+                                </p>
+                            </div>
+
+                            {/* Customization Form */}
+                            <div className="space-y-6 mb-6">
+                                {/* Nickname Field */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        What should {unlockingCharacter.name} call you?
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="nickname"
+                                        value={unlockForm.nickname}
+                                        onChange={handleUnlockFormChange}
+                                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
+                                        placeholder="e.g., Sweetie, Champ, Honey, etc."
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        This is how {unlockingCharacter.name} will address you in conversations
+                                    </p>
+                                </div>
+
+                                {/* Emotion Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Choose {unlockingCharacter.name}'s primary emotion style
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {unlockingCharacter.emotions.map((emotion) => (
+                                            <button
+                                                key={emotion}
+                                                type="button"
+                                                onClick={() => setUnlockForm(prev => ({ ...prev, selectedEmotion: emotion }))}
+                                                className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${unlockForm.selectedEmotion === emotion
+                                                        ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
+                                                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-yellow-50'
+                                                    }`}
+                                            >
+                                                {emotion}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Cost Summary */}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-600">Unlock Cost:</span>
+                                    <span className="font-semibold text-yellow-700">5 💰 Emocoins</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-2">
+                                    <span className="text-gray-600">Your Balance:</span>
+                                    <span className={`font-semibold ${userProfile.emocoins >= 5 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {userProfile.emocoins} 💰 Emocoins
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-2 pt-2 border-t border-yellow-200">
+                                    <span className="text-gray-600">After Purchase:</span>
+                                    <span className="font-semibold text-gray-800">
+                                        {userProfile.emocoins - 5} 💰 Emocoins
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={cancelUnlock}
+                                    disabled={unlockLoading}
+                                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmUnlockCharacter}
+                                    disabled={unlockLoading || userProfile.emocoins < 5 || !unlockForm.nickname.trim()}
+                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                >
+                                    {unlockLoading ? (
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                            Unlocking...
+                                        </div>
+                                    ) : (
+                                        'Unlock Character'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Info Section */}
-                {characters.length === 0 && !loading && (
+                {DEFAULT_CHARACTERS.length > 0 && !loading && unlockedCharacters.length === 0 && (
                     <div className="text-center">
                         <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
                             <Heart className="h-16 w-16 text-love-400 mx-auto mb-4" />
@@ -318,8 +604,8 @@ const MyLovedOnes = () => {
                                 Welcome to Your Circle of Love!
                             </h3>
                             <p className="text-pink-200 max-w-md mx-auto">
-                                Your characters will appear here automatically when you create an account.
-                                You'll start with 1 character unlocked, and more will be unlocked based on special criteria!
+                                Start your journey by unlocking your first character.
+                                Each character offers unique conversations and emotional support!
                             </p>
                         </div>
                     </div>

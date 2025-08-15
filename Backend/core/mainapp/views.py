@@ -369,7 +369,11 @@ class GeminiChatStreamView(APIView):
         mood = request.data.get('mood') or 'Neutral'
         topic = request.data.get('topic') or 'General conversation'
         additional_details = request.data.get('additional_details') or ''
-        nickname = request.data.get('nickname') or request.user.first_name or request.user.username
+        nickname = Character.objects.filter(user=request.user, character_type=relation_type).first()
+        if nickname:
+            nickname = nickname.nickname or request.user.first_name or request.user.username
+        else:
+            nickname = request.user.first_name or request.user.username
         history = request.data.get('history') or []
         relation_id = request.data.get('relation_id')
 
@@ -378,10 +382,10 @@ class GeminiChatStreamView(APIView):
 
         # Build conversation context as plain text (Gemini also supports structured messages; keep simple here)
         system_preamble = (
-            f"You are role-playing as the user's {relation_type}. "
+            f"You are role-playing as the user's {relation_type}. Call him as {nickname}. "
             f"Speak lovingly and supportively, matching the emotional tone requested. "
             f"User mood: {mood}. Topic: {topic}. Nickname of user: {nickname}. "
-            f"Additional context: {additional_details}. Do NOT break character; refer to the user by their nickname naturally." 
+            f"Additional context: {additional_details}. Do NOT break character; refer to the user by their nickname naturally. Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. Keep it short and simple. Don't be extra energized or excited, just be normal and calm. Don't be poetic. Don't beat about the bush."
         )
 
         conversation_lines = [f"System: {system_preamble}"]

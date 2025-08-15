@@ -9,12 +9,54 @@ import {
     MessageCircle,
     Sparkles
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../apiBase';
 
 const Navbar = () => {
-    const { isAuthenticated, logout } = useAuth();
+    const { isAuthenticated, logout, user } = useAuth();
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [emocoins, setEmocoins] = useState(0);
+
+    // Fetch emocoins when user is authenticated
+    useEffect(() => {
+        const fetchEmocoins = async () => {
+            if (isAuthenticated) {
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/api/profile/`);
+                    setEmocoins(response.data.emocoins || 0);
+                } catch (error) {
+                    console.error('Failed to fetch emocoins:', error);
+                }
+            }
+        };
+        fetchEmocoins();
+    }, [isAuthenticated, user]);
+
+    // Function to refresh emocoins (can be called when emocoins change)
+    const refreshEmocoins = async () => {
+        if (isAuthenticated) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/profile/`);
+                setEmocoins(response.data.emocoins || 0);
+            } catch (error) {
+                console.error('Failed to refresh emocoins:', error);
+            }
+        }
+    };
+
+    // Listen for emocoin changes via custom event
+    useEffect(() => {
+        const handleEmocoinUpdate = () => {
+            refreshEmocoins();
+        };
+
+        window.addEventListener('emocoinsUpdated', handleEmocoinUpdate);
+        return () => {
+            window.removeEventListener('emocoinsUpdated', handleEmocoinUpdate);
+        };
+    }, [isAuthenticated]);
 
     const handleLogout = async () => {
         await logout();
@@ -53,6 +95,13 @@ const Navbar = () => {
                                     <MessageCircle className="h-5 w-5 text-love-300" />
                                     <span className="font-semibold">💕 My Loved Ones</span>
                                 </Link>
+
+                                {/* Emocoins Display */}
+                                <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-white border border-yellow-400/30 backdrop-blur-sm">
+                                    <span className="text-xl">💰</span>
+                                    <span className="font-semibold text-yellow-200">{emocoins}</span>
+                                    <span className="text-sm text-yellow-300">coins</span>
+                                </div>
 
                                 {/* Action Buttons */}
                                 <div className="flex items-center space-x-3">
@@ -119,6 +168,13 @@ const Navbar = () => {
                                         <MessageCircle className="h-6 w-6 text-love-300" />
                                         <span className="font-semibold text-lg">💕 My Loved Ones</span>
                                     </Link>
+
+                                    {/* Emocoins Display - Mobile */}
+                                    <div className="flex items-center justify-center space-x-3 px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-white border border-yellow-400/30 backdrop-blur-sm">
+                                        <span className="text-2xl">💰</span>
+                                        <span className="font-bold text-yellow-200 text-lg">{emocoins}</span>
+                                        <span className="text-yellow-300 font-medium">Emocoins</span>
+                                    </div>
                                     <div className="flex space-x-3">
                                         <Link
                                             to="/profile"
