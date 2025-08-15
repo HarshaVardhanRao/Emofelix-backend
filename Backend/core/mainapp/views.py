@@ -367,6 +367,7 @@ class GeminiChatStreamView(APIView):
         additional_details = request.data.get('additional_details') or ''
         nickname = request.data.get('nickname') or request.user.first_name or request.user.username
         history = request.data.get('history') or []
+        relation_id = request.data.get('relation_id')
 
         if not message:
             return Response({"error": "Message is required"}, status=400)
@@ -393,6 +394,7 @@ class GeminiChatStreamView(APIView):
 
         model_name = getattr(settings, 'GEMINI_MODEL_NAME', 'gemini-1.5-flash')
 
+        # Streaming response for chat
         def stream_gen():
             try:
                 model = genai.GenerativeModel(model_name)
@@ -411,6 +413,29 @@ class GeminiChatStreamView(APIView):
                 err = f"data: Sorry, an internal error occurred: {str(e)[:120]}\n\n"
                 yield err.encode('utf-8')
 
+        # Generate summary at the end of chat using Gemini
+        summary_prompt = prompt_text + "\n\nSummarize this chat in 2-3 sentences for record keeping."
+        try:
+            model = genai.GenerativeModel(model_name)
+            summary_response = model.generate_content(summary_prompt)
+            summary_text = getattr(summary_response, 'text', None)
+            if not summary_text and hasattr(summary_response, 'candidates'):
+                summary_text = summary_response.candidates[0].text if summary_response.candidates else ''
+        except Exception:
+            summary_text = ''
+
+        # Save summary to ChatHistory
+        if relation_id and summary_text:
+            try:
+                relation = Relation.objects.get(id=relation_id, user=request.user)
+                ChatHistory.objects.create(
+                    user=request.user,
+                    relation=relation,
+                    summary=summary_text
+                )
+            except Relation.DoesNotExist:
+                pass
+
         return StreamingHttpResponse(stream_gen(), content_type='text/event-stream')
 
 from .models import ChatHistory
@@ -422,3 +447,25 @@ def chat_history_list(request):
     return render(request, 'mainapp/callhistory_list.html', {
         'chat_histories': chat_histories
     })
+
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from .models import ChatHistory, Relation
+
+@require_POST
+@login_required
+def add_chat_summary(request):
+    summary = request.POST.get('summary')
+    relation_id = request.POST.get('relation_id')
+    if not summary or not relation_id:
+        return JsonResponse({'error': 'Missing summary or relation_id.'}, status=400)
+    try:
+        relation = Relation.objects.get(id=relation_id, user=request.user)
+    except Relation.DoesNotExist:
+        return JsonResponse({'error': 'Relation not found.'}, status=404)
+    chat_history = ChatHistory.objects.create(
+        user=request.user,
+        relation=relation,
+        summary=summary
+    )
+    return JsonResponse({'success': True, 'chat_history_id': chat_history.id})
