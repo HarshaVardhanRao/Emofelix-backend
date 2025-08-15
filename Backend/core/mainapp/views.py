@@ -81,12 +81,19 @@ import random
 from django.core.mail import send_mail
 from django.conf import settings
 
-def send_otp_email(email):
+def send_otp_email(email, purpose="registration"):
     """Generate a 6-digit OTP and send it to the given email."""
     otp = str(random.randint(100000, 999999)) 
     
-    subject = "Email Verification OTP"
-    message = f"Your OTP for verification is: {otp}\nThis OTP will expire in 10 minutes."
+    if purpose == "registration":
+        subject = "Email Verification OTP"
+        message = f"Your OTP for email verification is: {otp}\nThis OTP will expire in 10 minutes."
+    elif purpose == "password_reset":
+        subject = "Password Reset OTP - EmoFelix"
+        message = f"Hello,\n\nWe received a request to reset your password for your EmoFelix account.\n\nYour password reset OTP is: {otp}\n\nThis OTP will expire in 10 minutes. If you didn't request this password reset, please ignore this email.\n\nBest regards,\nThe EmoFelix Team"
+    else:
+        subject = "OTP Verification"
+        message = f"Your OTP is: {otp}\nThis OTP will expire in 10 minutes."
     
     send_mail(
         subject,
@@ -249,6 +256,7 @@ class GoogleLoginView(APIView):
                     'username': email,
                     'first_name': idinfo.get('given_name', ''),
                     'last_name': idinfo.get('family_name', ''),
+                    'emocoins': 5  # Default to 5 emocoins
                 }
             )
             drf_token, _ = Token.objects.get_or_create(user=user)
@@ -261,11 +269,65 @@ class GoogleLoginView(APIView):
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ForgotPasswordView(APIView):
-    """Placeholder for forgot password logic."""
+    """Send password reset OTP to user's email."""
     permission_classes = [AllowAny]
+    
     def post(self, request):
-        # Full implementation requires email sending configuration
-        return Response({"message": "If an account with this email exists, a password reset link has been sent."})
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            # Generate OTP and send email
+            otp = send_otp_email(email, purpose="password_reset")
+            # Store OTP in cache for 10 minutes
+            cache.set(f"reset_otp_{email}", otp, timeout=600)
+            
+            return Response({
+                "message": "If an account with this email exists, a password reset OTP has been sent."
+            }, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            # Don't reveal if email exists or not for security
+            return Response({
+                "message": "If an account with this email exists, a password reset OTP has been sent."
+            }, status=status.HTTP_200_OK)
+
+class ResetPasswordView(APIView):
+    """Reset password using OTP verification."""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password')
+        
+        if not email or not otp or not new_password:
+            return Response({
+                "error": "Email, OTP and new password are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify OTP
+        stored_otp = cache.get(f"reset_otp_{email}")
+        if not stored_otp:
+            return Response({"error": "OTP expired or invalid"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if otp != stored_otp:
+            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.set_password(new_password)
+            user.save()
+            
+            # Clear OTP from cache
+            cache.delete(f"reset_otp_{email}")
+            
+            return Response({
+                "message": "Password has been reset successfully"
+            }, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 # --- API Data Endpoints ---
 
@@ -293,6 +355,63 @@ class CharacterViewSet(viewsets.ModelViewSet):
         return Character.objects.filter(user=self.request.user)
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class CreateCustomCharacterView(APIView):
+    """API Endpoint to create custom characters for 10 emocoins."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = CustomCharacterSerializer(data=request.data, context={'request': request})
+        
+        if not serializer.is_valid():
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check emocoins again before creating (double-check for race conditions)
+        user = request.user
+        if user.emocoins < 10:
+            return Response({
+                "error": f"Insufficient emocoins. You need 10 emocoins to create a custom character. You have {user.emocoins} emocoins."
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Deduct emocoins and create character
+        user.emocoins -= 10
+        user.save()
+        
+        character = serializer.save(user=user)
+        
+        return Response({
+            "message": "Custom character created successfully!",
+            "character": CharacterSerializer(character).data,
+            "remaining_emocoins": user.emocoins
+        }, status=status.HTTP_201_CREATED)
+
+class GetCustomCharacterOptionsView(APIView):
+    """API Endpoint to get available options for creating custom characters."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Get available character types (ones user doesn't already have)
+        user_character_types = Character.objects.filter(user=request.user).values_list('character_type', flat=True)
+        available_types = [
+            {"value": choice[0], "label": choice[1]} 
+            for choice in Character.CHARACTER_TYPES 
+            if choice[0] not in user_character_types
+        ]
+        
+        return Response({
+            "character_types": available_types,
+            "emotion_models": [
+                "Caring", "Supportive", "Cheerful", "Calm", "Energetic", 
+                "Wise", "Playful", "Protective", "Understanding", "Loving"
+            ],
+            "voice_models": [
+                "Warm", "Gentle", "Strong", "Soft", "Deep", 
+                "Light", "Melodic", "Soothing", "Confident", "Tender"
+            ],
+            "cost": 10,
+            "user_emocoins": request.user.emocoins,
+            "can_create": request.user.emocoins >= 10 and len(available_types) > 0
+        }, status=status.HTTP_200_OK)
 
 class StartCallView(APIView):
     """API Endpoint to prepare a call with a specific relation."""

@@ -307,15 +307,6 @@ const Login = () => {
                         </p>
                     </div>
                 </div>
-
-                {/* Fun GIF */}
-                <div className="text-center animate-bounce-in" style={{ animationDelay: '1s' }}>
-                    <img
-                        src="https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif"
-                        alt="Welcome back"
-                        className="w-24 h-24 mx-auto rounded-2xl glass-card p-2 hover:scale-110 transition-transform cursor-pointer"
-                    />
-                </div>
             </div>
         </div>
     );

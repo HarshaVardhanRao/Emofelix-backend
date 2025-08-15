@@ -4,6 +4,7 @@ import Navbar from './components/Navbar_new';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import MyLovedOnes from './pages/MyLovedOnes';
 import CallSetup from './pages/CallSetup';
 import Chat from './pages/Chat';
@@ -69,6 +70,14 @@ function AppContent() {
             element={
               <PublicRoute>
                 <Register />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
               </PublicRoute>
             }
           />

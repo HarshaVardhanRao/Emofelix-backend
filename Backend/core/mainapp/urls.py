@@ -35,9 +35,12 @@ urlpatterns = [
     path('api/logout/', views.ApiLogoutView.as_view(), name='api-logout'),
     path('api/auth/google-login/', views.GoogleLoginView.as_view(), name='google-login'),
     path('api/forgot-password/', views.ForgotPasswordView.as_view(), name='api-forgot-password'),
+    path('api/reset-password/', views.ResetPasswordView.as_view(), name='api-reset-password'),
 
     # API Data Endpoints
     path('api/profile/', views.ProfileView.as_view(), name='api-profile'),
+    path('api/custom-characters/create-custom/', views.CreateCustomCharacterView.as_view(), name='api-create-custom-character'),
+    path('api/custom-characters/options/', views.GetCustomCharacterOptionsView.as_view(), name='api-character-options'),
     path('api/notifications/', views.ApiNotificationListView.as_view(), name='api-notifications'),
     path('api/call-history/', views.ApiCallHistoryListView.as_view(), name='api-call-history'),
     path('api/relations/<int:relation_id>/start-call/', views.StartCallView.as_view(), name='api-start-call'),

@@ -35,6 +35,68 @@ class CharacterSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'character_type', 'emotion_model', 'voice_model', 'nickname', 'created_at')
         read_only_fields = ('user', 'created_at')
 
+class CustomCharacterSerializer(serializers.ModelSerializer):
+    """Serializer for creating custom characters with validation and emocoins cost."""
+    
+    class Meta:
+        model = Character
+        fields = ('id', 'name', 'character_type', 'emotion_model', 'voice_model', 'nickname', 'created_at')
+        read_only_fields = ('user', 'created_at')
+    
+    def validate_name(self, value):
+        """Validate character name."""
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError("Character name must be at least 2 characters long.")
+        if len(value) > 100:
+            raise serializers.ValidationError("Character name must not exceed 100 characters.")
+        if not value.replace(' ', '').replace('-', '').replace("'", '').isalpha():
+            raise serializers.ValidationError("Character name should only contain letters, spaces, hyphens, and apostrophes.")
+        return value.strip()
+    
+    def validate_character_type(self, value):
+        """Validate character type against available choices."""
+        valid_types = [choice[0] for choice in Character.CHARACTER_TYPES]
+        if value not in valid_types:
+            raise serializers.ValidationError(f"Invalid character type. Choose from: {', '.join(valid_types)}")
+        return value
+    
+    def validate_emotion_model(self, value):
+        """Validate emotion model."""
+        valid_emotions = ['Caring', 'Supportive', 'Cheerful', 'Calm', 'Energetic', 'Wise', 'Playful', 'Protective', 'Understanding', 'Loving']
+        if value not in valid_emotions:
+            raise serializers.ValidationError(f"Invalid emotion model. Choose from: {', '.join(valid_emotions)}")
+        return value
+    
+    def validate_voice_model(self, value):
+        """Validate voice model."""
+        valid_voices = ['Warm', 'Gentle', 'Strong', 'Soft', 'Deep', 'Light', 'Melodic', 'Soothing', 'Confident', 'Tender']
+        if value not in valid_voices:
+            raise serializers.ValidationError(f"Invalid voice model. Choose from: {', '.join(valid_voices)}")
+        return value
+    
+    def validate_nickname(self, value):
+        """Validate nickname."""
+        if value and len(value.strip()) < 2:
+            raise serializers.ValidationError("Nickname must be at least 2 characters long.")
+        if value and len(value) > 100:
+            raise serializers.ValidationError("Nickname must not exceed 100 characters.")
+        return value.strip() if value else value
+    
+    def validate(self, attrs):
+        """Cross-field validation."""
+        user = self.context['request'].user
+        character_type = attrs.get('character_type')
+        
+        # Check if user already has this character type
+        if Character.objects.filter(user=user, character_type=character_type).exists():
+            raise serializers.ValidationError(f"You already have a {character_type} character. Each user can only have one character per type.")
+        
+        # Check if user has enough emocoins
+        if user.emocoins < 10:
+            raise serializers.ValidationError(f"Insufficient emocoins. You need 10 emocoins to create a custom character. You have {user.emocoins} emocoins.")
+        
+        return attrs
+
 # Keep your existing serializers and add the above
 class RelationSerializer(serializers.ModelSerializer):
     class Meta:

@@ -11,9 +11,11 @@ import {
     Baby,
     Sparkles,
     Lock,
-    Settings
+    Settings,
+    Star
 } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
+import CreateCustomCharacterModal from '../components/CreateCustomCharacterModal';
 
 // Default characters configuration - stored in frontend
 const DEFAULT_CHARACTERS = [
@@ -103,6 +105,9 @@ const MyLovedOnes = () => {
         nickname: '',
         selectedEmotion: ''
     });
+
+    // Custom character modal state
+    const [showCustomCharacterModal, setShowCustomCharacterModal] = useState(false);
 
     useEffect(() => {
         fetchUnlockedCharacters();
@@ -271,6 +276,15 @@ const MyLovedOnes = () => {
         setShowUnlockModal(false);
         setUnlockingCharacter(null);
         setUnlockForm({ nickname: '', selectedEmotion: '' });
+    };
+
+    const handleCustomCharacterCreated = async (newCharacter) => {
+        // Refresh characters and user profile
+        await fetchUnlockedCharacters();
+        await fetchUserProfile();
+
+        // Close modal
+        setShowCustomCharacterModal(false);
     }; if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800 flex items-center justify-center">
@@ -332,86 +346,198 @@ const MyLovedOnes = () => {
                     <h2 className="text-3xl font-bold text-white mb-8 text-center">
                         💬 Your Characters
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {DEFAULT_CHARACTERS.map((character) => {
-                            const isUnlocked = isCharacterUnlocked(character.id);
-                            const unlockedData = isUnlocked ? getUnlockedCharacterData(character.id) : null;
-                            const displayName = unlockedData?.name || character.name;
 
-                            return (
-                                <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${isUnlocked ? 'border-love-400/20' : 'border-gray-500/20'} relative`}>
-                                    {/* Settings button */}
-                                    <button
-                                        onClick={() => isUnlocked ? openEditModal(character) : alert('Unlock this character to edit details')}
-                                        className={`absolute top-3 right-3 p-2 rounded-full glass transition-transform ${isUnlocked ? 'hover:scale-110 text-white/80 hover:text-white' : 'opacity-60 cursor-pointer text-white/50'}`}
-                                        title={isUnlocked ? 'Edit details' : 'Unlock to edit'}
-                                    >
-                                        <Settings className="h-5 w-5" />
-                                    </button>
+                    {/* Unlocked Characters Section */}
+                    {DEFAULT_CHARACTERS.filter(char => isCharacterUnlocked(char.id)).length > 0 && (
+                        <div className="mb-12">
+                            <h3 className="text-2xl font-bold text-love-300 mb-6 flex items-center justify-center">
+                                <span className="text-2xl mr-2">✨</span>
+                                Unlocked Characters
+                                <span className="text-2xl ml-2">✨</span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {DEFAULT_CHARACTERS
+                                    .filter(character => isCharacterUnlocked(character.id))
+                                    .sort((a, b) => a.unlock_order - b.unlock_order)
+                                    .map((character) => {
+                                        const unlockedData = getUnlockedCharacterData(character.id);
+                                        const displayName = unlockedData?.name || character.name;
 
+                                        return (
+                                            <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-love-400/20 relative`}>
+                                                {/* Settings button */}
+                                                <button
+                                                    onClick={() => openEditModal(character)}
+                                                    className="absolute top-3 right-3 p-2 rounded-full glass transition-transform hover:scale-110 text-white/80 hover:text-white"
+                                                    title="Edit details"
+                                                >
+                                                    <Settings className="h-5 w-5" />
+                                                </button>
+
+                                                {/* Avatar and Basic Info */}
+                                                <div className="flex items-center space-x-4 mb-6">
+                                                    <div className={`w-16 h-16 bg-gradient-to-br ${character.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
+                                                        {character.emoji}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-white group-hover:loving-text transition-all">
+                                                            {displayName}
+                                                        </h3>
+                                                        <p className="text-pink-200">
+                                                            {character.character_type}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Quick Info with animated emotion changes */}
+                                                <div className="space-y-2 mb-6">
+                                                    <div className="flex items-center space-x-2 group/emotion">
+                                                        <Sparkles className="h-4 w-4 text-warm-400 transition-all duration-700 group-hover/emotion:scale-110 animate-pulse" />
+                                                        <span
+                                                            className="text-sm text-pink-200 transition-all duration-700 font-medium group-hover/emotion:text-warm-300"
+                                                            style={{
+                                                                textShadow: '0 0 10px rgba(255, 182, 193, 0.3)'
+                                                            }}
+                                                        >
+                                                            {getCurrentEmotion(character)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Button */}
+                                                <Link
+                                                    to={`/call-setup/${unlockedData.id}`}
+                                                    className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
+                                                >
+                                                    <MessageCircle className="h-5 w-5 mr-2" />
+                                                    💬 Start Chatting
+                                                </Link>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Locked Characters Section */}
+                    {DEFAULT_CHARACTERS.filter(char => !isCharacterUnlocked(char.id)).length > 0 && (
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-300 mb-6 flex items-center justify-center">
+                                <span className="text-2xl mr-2">🔒</span>
+                                Available to Unlock
+                                <span className="text-2xl ml-2">🔒</span>
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {/* Existing Default Characters */}
+                                {DEFAULT_CHARACTERS
+                                    .filter(character => !isCharacterUnlocked(character.id))
+                                    .sort((a, b) => a.unlock_order - b.unlock_order)
+                                    .map((character) => {
+                                        const displayName = character.name;
+
+                                        return (
+                                            <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-gray-500/20 relative`}>
+                                                {/* Settings button */}
+                                                <button
+                                                    onClick={() => alert('Unlock this character to edit details')}
+                                                    className="absolute top-3 right-3 p-2 rounded-full glass transition-transform opacity-60 cursor-pointer text-white/50"
+                                                    title="Unlock to edit"
+                                                >
+                                                    <Settings className="h-5 w-5" />
+                                                </button>
+
+                                                {/* Avatar and Basic Info */}
+                                                <div className="flex items-center space-x-4 mb-6">
+                                                    <div className={`w-16 h-16 bg-gradient-to-br ${character.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
+                                                        {character.emoji}
+                                                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                                                            <Lock className="h-6 w-6 text-white" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-gray-400 transition-all">
+                                                            {displayName}
+                                                        </h3>
+                                                        <p className="text-gray-500">
+                                                            {character.character_type}
+                                                        </p>
+                                                        <div className="flex items-center mt-1">
+                                                            <Lock className="h-3 w-3 text-gray-500 mr-1" />
+                                                            <span className="text-xs text-gray-500">Locked</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Quick Info with animated emotion changes */}
+                                                <div className="space-y-2 mb-6">
+                                                    <div className="flex items-center space-x-2 group/emotion">
+                                                        <Sparkles className="h-4 w-4 text-gray-500 transition-all duration-700 group-hover/emotion:scale-110" />
+                                                        <span
+                                                            className="text-sm text-gray-500 transition-all duration-700 font-medium group-hover/emotion:text-warm-300"
+                                                        >
+                                                            {getCurrentEmotion(character)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Button */}
+                                                <button
+                                                    onClick={() => handleUnlockCharacter(character)}
+                                                    className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-400/25"
+                                                >
+                                                    <span className="text-xl mr-2">💰</span>
+                                                    Unlock for 5 coins
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Custom Character Creation Card */}
+                                <div className="group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-purple-500/30 relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 transition-all duration-300">
                                     {/* Avatar and Basic Info */}
                                     <div className="flex items-center space-x-4 mb-6">
-                                        <div className={`w-16 h-16 bg-gradient-to-br ${character.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
-                                            {character.emoji}
-                                            {!isUnlocked && (
-                                                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                                    <Lock className="h-6 w-6 text-white" />
-                                                </div>
-                                            )}
+                                        <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative">
+                                            <Star className="h-8 w-8 text-white animate-pulse" />
                                         </div>
                                         <div>
-                                            <h3 className={`text-xl font-bold ${isUnlocked ? 'text-white group-hover:loving-text' : 'text-gray-400'} transition-all`}>
-                                                {displayName}
+                                            <h3 className="text-xl font-bold text-white group-hover:loving-text transition-all">
+                                                Custom Character
                                             </h3>
-                                            <p className={`${isUnlocked ? 'text-pink-200' : 'text-gray-500'}`}>
-                                                {character.character_type}
+                                            <p className="text-purple-200">
+                                                Design Your Own
                                             </p>
-                                            {!isUnlocked && (
-                                                <div className="flex items-center mt-1">
-                                                    <Lock className="h-3 w-3 text-gray-500 mr-1" />
-                                                    <span className="text-xs text-gray-500">Locked</span>
-                                                </div>
-                                            )}
+                                            <div className="flex items-center mt-1">
+                                                <span className="text-xs text-yellow-400 font-semibold">10 🪙 Emocoins</span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Quick Info with animated emotion changes */}
+                                    {/* Quick Info */}
                                     <div className="space-y-2 mb-6">
-                                        <div className="flex items-center space-x-2 group/emotion">
-                                            <Sparkles className={`h-4 w-4 ${isUnlocked ? 'text-warm-400' : 'text-gray-500'} transition-all duration-700 group-hover/emotion:scale-110 ${isUnlocked ? 'animate-pulse' : ''}`} />
-                                            <span
-                                                className={`text-sm ${isUnlocked ? 'text-pink-200' : 'text-gray-500'} transition-all duration-700 font-medium group-hover/emotion:text-warm-300`}
-                                                style={{
-                                                    textShadow: isUnlocked ? '0 0 10px rgba(255, 182, 193, 0.3)' : 'none'
-                                                }}
-                                            >
-                                                {getCurrentEmotion(character)}
+                                        <div className="flex items-center space-x-2">
+                                            <Sparkles className="h-4 w-4 text-purple-400 animate-pulse" />
+                                            <span className="text-sm text-purple-200 font-medium">
+                                                Choose personality, voice & name
                                             </span>
                                         </div>
+                                        <p className="text-xs text-gray-300 leading-relaxed">
+                                            Create a unique AI companion tailored just for you with custom traits and characteristics.
+                                        </p>
                                     </div>
 
-                                    {/* Action Button */}
-                                    {isUnlocked ? (
-                                        <Link
-                                            to={`/call-setup/${unlockedData.id}`}
-                                            className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
-                                        >
-                                            <MessageCircle className="h-5 w-5 mr-2" />
-                                            💬 Start Chatting
-                                        </Link>
-                                    ) : (
-                                        <button
-                                            onClick={() => handleUnlockCharacter(character)}
-                                            className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-yellow-400/25"
-                                        >
-                                            <span className="text-xl mr-2">💰</span>
-                                            Unlock for 5 coins
-                                        </button>
-                                    )}
+                                    {/* Create Button */}
+                                    <button
+                                        onClick={() => setShowCustomCharacterModal(true)}
+                                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+                                    >
+                                        <Star className="h-4 w-4" />
+                                        <span>Create Character</span>
+                                        <span>✨</span>
+                                    </button>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        </div>
+                    )}
+                    
                 </div>
 
                 {/* Edit Character Modal */}
@@ -611,6 +737,13 @@ const MyLovedOnes = () => {
                     </div>
                 )}
             </div>
+
+            {/* Custom Character Creation Modal */}
+            <CreateCustomCharacterModal
+                isOpen={showCustomCharacterModal}
+                onClose={() => setShowCustomCharacterModal(false)}
+                onCharacterCreated={handleCustomCharacterCreated}
+            />
         </div>
     );
 };
