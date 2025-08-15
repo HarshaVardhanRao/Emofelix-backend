@@ -8,7 +8,8 @@ import {
     Video,
     Crown,
     MessageCircle,
-    Lock
+    Lock,
+    Send
 } from 'lucide-react';
 
 const CallSetup = () => {
@@ -69,7 +70,8 @@ const CallSetup = () => {
             language,
             topic,
             additionalDetails,
-            callType
+            callType,
+            sendAsFirstMessage: additionalDetails.trim().length > 0 // Flag to send message if present
         };
         sessionStorage.setItem('callPreferences', JSON.stringify(callData));
 
@@ -83,8 +85,38 @@ const CallSetup = () => {
             additional_details: additionalDetails,
             language,
         }).catch(() => {/* ignore */ }).finally(() => {
-            navigate(`/chat/${relationId}?callType=${callType}`);
+            // Add directMessage=true if there's a message to send
+            const directMessageParam = additionalDetails.trim().length > 0 ? '&directMessage=true' : '';
+            navigate(`/chat/${relationId}?callType=${callType}${directMessageParam}`);
         });
+    };
+
+    const handleSendMessage = () => {
+        if (!additionalDetails.trim()) return;
+
+        // Store the message as the first user message and start chat immediately
+        const callData = {
+            mood,
+            moodLabel: moodLabels[mood],
+            language,
+            topic,
+            additionalDetails,
+            callType: 'chat',
+            sendAsFirstMessage: true // Flag to indicate this should be sent as first message
+        };
+        sessionStorage.setItem('callPreferences', JSON.stringify(callData));
+
+        // Start the call API in background
+        axios.post(`${API_BASE_URL}/api/characters/${relationId}/start-call/`, {
+            call_type: 'chat',
+            mood: moodLabels[mood],
+            topic,
+            additional_details: additionalDetails,
+            language,
+        }).catch(() => {/* ignore */ });
+
+        // Navigate to chat immediately
+        navigate(`/chat/${relationId}?callType=chat&directMessage=true`);
     };
 
     if (loading) {
@@ -215,13 +247,36 @@ const CallSetup = () => {
 
                                 <div className="md:col-span-2 transition-transform duration-300 hover:-translate-y-0.5">
                                     <label className="block text-base font-medium text-pink-200 mb-2">What's on your mind?</label>
-                                    <textarea
-                                        value={additionalDetails}
-                                        onChange={(e) => setAdditionalDetails(e.target.value)}
-                                        placeholder="Share anything specific..."
-                                        className="w-full p-3 border-2 border-white/20 rounded-lg bg-white/10 backdrop-blur-sm text-white placeholder-pink-300 resize-none focus:ring-2 focus:ring-love-400 focus:border-love-400 transition-all"
-                                        rows={4}
-                                    />
+                                    <div className="relative">
+                                        <textarea
+                                            value={additionalDetails}
+                                            onChange={(e) => setAdditionalDetails(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                }
+                                            }}
+                                            placeholder="Share anything specific... (Ctrl+Enter to send)"
+                                            className="w-full p-3 pr-12 border-2 border-white/20 rounded-lg bg-white/10 backdrop-blur-sm text-white placeholder-pink-300 resize-none focus:ring-2 focus:ring-love-400 focus:border-love-400 transition-all"
+                                            rows={4}
+                                        />
+                                        {additionalDetails.trim() && (
+                                            <button
+                                                onClick={handleSendMessage}
+                                                className="absolute bottom-3 right-3 p-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg group"
+                                                title="Send message and start chat (Ctrl+Enter)"
+                                            >
+                                                <Send className="h-4 w-4 text-white group-hover:translate-x-0.5 transition-transform" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {additionalDetails.trim() && (
+                                        <div className="mt-2 text-xs text-pink-300 flex items-center gap-1">
+                                            <Send className="h-3 w-3" />
+                                            <span>Press the send button or Ctrl+Enter to start chatting immediately</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

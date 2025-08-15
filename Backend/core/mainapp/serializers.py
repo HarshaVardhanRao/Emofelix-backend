@@ -87,11 +87,8 @@ class CustomCharacterSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         character_type = attrs.get('character_type')
         
-        # Check if user already has this character type
-        if Character.objects.filter(user=user, character_type=character_type).exists():
-            raise serializers.ValidationError(f"You already have a {character_type} character. Each user can only have one character per type.")
-        
-        # Check if user has enough emocoins
+        # For custom characters, allow multiple characters of the same type
+        # Only check for emocoins
         if user.emocoins < 10:
             raise serializers.ValidationError(f"Insufficient emocoins. You need 10 emocoins to create a custom character. You have {user.emocoins} emocoins.")
         

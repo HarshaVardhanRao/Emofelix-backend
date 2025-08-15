@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import {
@@ -18,6 +18,7 @@ import { API_BASE_URL, GEMINI_CHAT_STREAM_URL } from '../apiBase';
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, token } = useAuth();
     const [character, setCharacter] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -27,6 +28,10 @@ const Chat = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [callPreferences, setCallPreferences] = useState(null);
     const messagesEndRef = useRef(null);
+
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(location.search);
+    const isDirectMessage = urlParams.get('directMessage') === 'true';
 
     const fetchCharacter = useCallback(async () => {
         try {
@@ -163,17 +168,108 @@ const Chat = () => {
                 if (savedPreferences) {
                     const preferences = JSON.parse(savedPreferences);
                     setCallPreferences(preferences);
-                    const additional = [preferences?.additionalDetails, preferences?.language ? `Preferred language: ${preferences.language}` : '']
-                        .filter(Boolean)
-                        .join('\n');
 
-                    cleanup = streamInitialGreeting({
-                        relationType: characterData?.character_type,
-                        mood: preferences?.moodLabel || preferences?.mood,
-                        topic: preferences?.topic,
-                        additionalDetails: additional,
-                        nickname: (user?.first_name || user?.username),
-                    });
+                    // Handle direct message scenario
+                    if (isDirectMessage && preferences.sendAsFirstMessage && preferences.additionalDetails) {
+                        // Add the user message immediately
+                        const userMessage = {
+                            id: Date.now(),
+                            content: preferences.additionalDetails,
+                            sender: 'user',
+                            timestamp: new Date().toISOString()
+                        };
+                        setMessages([userMessage]);
+
+                        // Start AI response streaming using the same logic as handleSendMessage
+                        const typingMessage = {
+                            id: Date.now() + 1,
+                            content: '',
+                            sender: 'ai',
+                            timestamp: new Date().toISOString(),
+                            typing: true
+                        };
+                        setMessages(prev => [...prev, typingMessage]);
+
+                        // Stream AI response
+                        (async () => {
+                            try {
+                                const body = {
+                                    message: preferences.additionalDetails,
+                                    relation_type: characterData?.character_type || 'Friend',
+                                    mood: preferences?.moodLabel || preferences?.mood,
+                                    topic: preferences?.topic,
+                                    additional_details: '',
+                                    nickname: (user?.first_name || user?.username),
+                                    history: []
+                                };
+
+                                const response = await fetch(GEMINI_CHAT_STREAM_URL, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Token ${token}`,
+                                    },
+                                    body: JSON.stringify(body)
+                                });
+
+                                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                                const reader = response.body?.getReader();
+                                if (!reader) throw new Error('No response body');
+
+                                let aiContent = '';
+                                const decoder = new TextDecoder();
+                                const aiMessageId = Date.now() + 1;
+
+                                while (true) {
+                                    const { done, value } = await reader.read();
+                                    if (done) break;
+
+                                    const chunk = decoder.decode(value, { stream: true });
+                                    const lines = chunk.split('\n').filter(line => line.trim());
+
+                                    for (const line of lines) {
+                                        if (line.startsWith('data: ')) {
+                                            const data = line.slice(6);
+                                            if (data === '[DONE]') continue;
+
+                                            try {
+                                                const parsed = JSON.parse(data);
+                                                if (parsed.content) {
+                                                    aiContent += parsed.content;
+                                                    setMessages(prev =>
+                                                        prev.map(msg =>
+                                                            msg.id === aiMessageId
+                                                                ? { ...msg, content: aiContent, typing: false }
+                                                                : msg
+                                                        )
+                                                    );
+                                                }
+                                            } catch (e) {
+                                                console.debug('JSON parse error:', e);
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('Streaming error:', error);
+                                setMessages(prev => prev.filter(msg => !msg.typing));
+                            }
+                        })();
+                    } else {
+                        // Normal greeting flow
+                        const additional = [preferences?.additionalDetails, preferences?.language ? `Preferred language: ${preferences.language}` : '']
+                            .filter(Boolean)
+                            .join('\n');
+
+                        cleanup = streamInitialGreeting({
+                            relationType: characterData?.character_type,
+                            mood: preferences?.moodLabel || preferences?.mood,
+                            topic: preferences?.topic,
+                            additionalDetails: additional,
+                            nickname: (user?.first_name || user?.username),
+                        });
+                    }
 
                     sessionStorage.removeItem('callPreferences');
                 } else {
@@ -198,7 +294,7 @@ const Chat = () => {
         return () => {
             if (typeof cleanup === 'function') cleanup();
         };
-    }, [relationId, fetchCharacter, user, streamInitialGreeting, token]);
+    }, [relationId, fetchCharacter, user, streamInitialGreeting, token, isDirectMessage]);
 
     useEffect(() => {
         scrollToBottom();

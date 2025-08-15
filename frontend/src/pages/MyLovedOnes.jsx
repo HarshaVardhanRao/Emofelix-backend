@@ -12,7 +12,8 @@ import {
     Sparkles,
     Lock,
     Settings,
-    Star
+    Star,
+    Mic
 } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
 import CreateCustomCharacterModal from '../components/CreateCustomCharacterModal';
@@ -176,14 +177,23 @@ const MyLovedOnes = () => {
     };
 
     const openEditModal = (character) => {
-        const unlockedData = getUnlockedCharacterData(character.id);
+        // Handle both old structure (character with id) and new structure (direct character data)
+        let unlockedData;
+        if (typeof character === 'object' && character.name) {
+            // Direct character data from backend
+            unlockedData = character;
+        } else {
+            // Old structure - find character by ID or type
+            unlockedData = getUnlockedCharacterData(character.id || character);
+        }
+
         if (!unlockedData) return;
 
         setEditingCharacter(unlockedData);
         setEditForm({
-            name: unlockedData.name || character.name,
-            emotion_model: unlockedData.emotion_model || character.emotion_model,
-            voice_model: unlockedData.voice_model || character.voice_model,
+            name: unlockedData.name,
+            emotion_model: unlockedData.emotion_model,
+            voice_model: unlockedData.voice_model,
             nickname: unlockedData.nickname || ''
         });
         setShowEditModal(true);
@@ -278,7 +288,7 @@ const MyLovedOnes = () => {
         setUnlockForm({ nickname: '', selectedEmotion: '' });
     };
 
-    const handleCustomCharacterCreated = async (newCharacter) => {
+    const handleCustomCharacterCreated = async () => {
         // Refresh characters and user profile
         await fetchUnlockedCharacters();
         await fetchUserProfile();
@@ -325,13 +335,6 @@ const MyLovedOnes = () => {
                         💕 Your Circle of Love
                     </div>
 
-                    {/* Emocoins Display */}
-                    <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-full text-white text-base font-medium mb-6 border border-yellow-400/30 backdrop-blur-sm">
-                        <span className="text-xl mr-2">💰</span>
-                        <span className="font-bold text-yellow-200">{userProfile.emocoins}</span>
-                        <span className="ml-1 text-yellow-300">Emocoins</span>
-                    </div>
-
                     <h1 className="text-5xl lg:text-6xl font-black text-white mb-4">
                         Your <span className="loving-text">Characters</span>
                     </h1>
@@ -348,23 +351,33 @@ const MyLovedOnes = () => {
                     </h2>
 
                     {/* Unlocked Characters Section */}
-                    {DEFAULT_CHARACTERS.filter(char => isCharacterUnlocked(char.id)).length > 0 && (
+                    {unlockedCharacters.length > 0 && (
                         <div className="mb-12">
                             <h3 className="text-2xl font-bold text-love-300 mb-6 flex items-center justify-center">
                                 <span className="text-2xl mr-2">✨</span>
-                                Unlocked Characters
+                                Your Characters ({unlockedCharacters.length})
                                 <span className="text-2xl ml-2">✨</span>
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {DEFAULT_CHARACTERS
-                                    .filter(character => isCharacterUnlocked(character.id))
-                                    .sort((a, b) => a.unlock_order - b.unlock_order)
+                                {unlockedCharacters
+                                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
                                     .map((character) => {
-                                        const unlockedData = getUnlockedCharacterData(character.id);
-                                        const displayName = unlockedData?.name || character.name;
+                                        // Find matching default character for emoji and gradient
+                                        const defaultChar = DEFAULT_CHARACTERS.find(dc => dc.character_type === character.character_type);
+                                        const emoji = defaultChar?.emoji || '🤖';
+                                        const gradient = defaultChar?.gradient || 'from-gray-400 to-gray-600';
+                                        const isCustom = !defaultChar || unlockedCharacters.filter(uc => uc.character_type === character.character_type).length > 1;
 
                                         return (
-                                            <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-love-400/20 relative`}>
+                                            <div key={character.id} className={`group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 ${isCustom ? 'border-purple-400/30' : 'border-love-400/20'} relative`}>
+                                                {/* Custom badge for custom characters */}
+                                                {isCustom && (
+                                                    <div className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-1 rounded-full font-bold flex items-center">
+                                                        <Star className="h-3 w-3 mr-1" />
+                                                        Custom
+                                                    </div>
+                                                )}
+
                                                 {/* Settings button */}
                                                 <button
                                                     onClick={() => openEditModal(character)}
@@ -376,37 +389,48 @@ const MyLovedOnes = () => {
 
                                                 {/* Avatar and Basic Info */}
                                                 <div className="flex items-center space-x-4 mb-6">
-                                                    <div className={`w-16 h-16 bg-gradient-to-br ${character.gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
-                                                        {character.emoji}
+                                                    <div className={`w-16 h-16 bg-gradient-to-br ${gradient} rounded-full flex items-center justify-center text-3xl group-hover:scale-110 transition-transform relative`}>
+                                                        {emoji}
+                                                        {isCustom && (
+                                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                                                                <Sparkles className="h-3 w-3 text-white" />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <h3 className="text-xl font-bold text-white group-hover:loving-text transition-all">
-                                                            {displayName}
+                                                            {character.name}
                                                         </h3>
                                                         <p className="text-pink-200">
                                                             {character.character_type}
                                                         </p>
+                                                        {character.nickname && (
+                                                            <p className="text-xs text-warm-300">
+                                                                Calls you: {character.nickname}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                {/* Quick Info with animated emotion changes */}
+                                                {/* Quick Info */}
                                                 <div className="space-y-2 mb-6">
-                                                    <div className="flex items-center space-x-2 group/emotion">
-                                                        <Sparkles className="h-4 w-4 text-warm-400 transition-all duration-700 group-hover/emotion:scale-110 animate-pulse" />
-                                                        <span
-                                                            className="text-sm text-pink-200 transition-all duration-700 font-medium group-hover/emotion:text-warm-300"
-                                                            style={{
-                                                                textShadow: '0 0 10px rgba(255, 182, 193, 0.3)'
-                                                            }}
-                                                        >
-                                                            {getCurrentEmotion(character)}
+                                                    <div className="flex items-center space-x-2">
+                                                        <Sparkles className="h-4 w-4 text-warm-400 animate-pulse" />
+                                                        <span className="text-sm text-pink-200 font-medium">
+                                                            {character.emotion_model}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Mic className="h-4 w-4 text-blue-400" />
+                                                        <span className="text-sm text-blue-200">
+                                                            {character.voice_model}
                                                         </span>
                                                     </div>
                                                 </div>
 
                                                 {/* Action Button */}
                                                 <Link
-                                                    to={`/call-setup/${unlockedData.id}`}
+                                                    to={`/call-setup/${character.id}`}
                                                     className="w-full inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-love-500 to-warm-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-love group-hover:shadow-warm"
                                                 >
                                                     <MessageCircle className="h-5 w-5 mr-2" />
@@ -491,7 +515,7 @@ const MyLovedOnes = () => {
                                             </div>
                                         );
                                     })}
-                                    {/* Custom Character Creation Card */}
+                                {/* Custom Character Creation Card */}
                                 <div className="group glass-card rounded-3xl p-6 card-hover gentle-bounce border-2 border-purple-500/30 relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 transition-all duration-300">
                                     {/* Avatar and Basic Info */}
                                     <div className="flex items-center space-x-4 mb-6">
@@ -537,7 +561,7 @@ const MyLovedOnes = () => {
                             </div>
                         </div>
                     )}
-                    
+
                 </div>
 
                 {/* Edit Character Modal */}

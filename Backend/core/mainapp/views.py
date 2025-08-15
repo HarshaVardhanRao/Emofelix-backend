@@ -390,12 +390,9 @@ class GetCustomCharacterOptionsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        # Get available character types (ones user doesn't already have)
-        user_character_types = Character.objects.filter(user=request.user).values_list('character_type', flat=True)
         available_types = [
             {"value": choice[0], "label": choice[1]} 
             for choice in Character.CHARACTER_TYPES 
-            if choice[0] not in user_character_types
         ]
         
         return Response({

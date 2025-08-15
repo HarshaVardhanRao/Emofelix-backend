@@ -39,7 +39,7 @@ class Character(models.Model):
 
     class Meta:
         ordering = ['created_at']
-        unique_together = ['user', 'character_type']  # One character per type per user
+        # Removed unique_together constraint to allow multiple characters of same type
 
     def __str__(self):
         return f"{self.name} ({self.character_type})"
