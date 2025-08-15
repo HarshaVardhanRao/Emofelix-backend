@@ -173,7 +173,7 @@ const MyLovedOnes = () => {
     const openEditModal = (character) => {
         const unlockedData = getUnlockedCharacterData(character.id);
         if (!unlockedData) return;
-        
+
         setEditingCharacter(unlockedData);
         setEditForm({
             name: unlockedData.name || character.name,
@@ -182,7 +182,7 @@ const MyLovedOnes = () => {
             nickname: unlockedData.nickname || ''
         });
         setShowEditModal(true);
-    };    const handleEditChange = (e) => {
+    }; const handleEditChange = (e) => {
         const { name, value } = e.target;
         setEditForm(prev => ({ ...prev, [name]: value }));
     };
@@ -536,8 +536,8 @@ const MyLovedOnes = () => {
                                                 type="button"
                                                 onClick={() => setUnlockForm(prev => ({ ...prev, selectedEmotion: emotion }))}
                                                 className={`px-4 py-3 rounded-lg border text-sm font-medium transition-colors ${unlockForm.selectedEmotion === emotion
-                                                        ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
-                                                        : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-yellow-50'
+                                                    ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
+                                                    : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-yellow-50'
                                                     }`}
                                             >
                                                 {emotion}
