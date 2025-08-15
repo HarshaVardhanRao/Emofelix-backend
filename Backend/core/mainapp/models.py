@@ -33,6 +33,7 @@ class Character(models.Model):
     character_type = models.CharField(max_length=50, choices=CHARACTER_TYPES)
     emotion_model = models.CharField(max_length=100)
     voice_model = models.CharField(max_length=100)
+    nickname = models.CharField(max_length=100, help_text="What the character usually calls the user.", blank=True)
     is_unlocked = models.BooleanField(default=False)
     unlock_order = models.PositiveIntegerField(default=0)  # Order in which they should be unlocked
     created_at = models.DateTimeField(auto_now_add=True)
@@ -97,7 +98,17 @@ class ChatPreference(models.Model):
     voice_type = models.CharField(max_length=100)    # e.g. "Warm, Friendly"
 
 
+# -------------------------------
+# Chat History
+# -------------------------------
+class ChatHistory(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    relation = models.ForeignKey(Relation, on_delete=models.CASCADE)
+    summary = models.TextField(help_text="Summary of the chat between user and relation.")
+    timestamp = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"ChatHistory: {self.user.username} & {self.relation.name} @ {self.timestamp}" 
 
 
 # -------------------------------
@@ -138,6 +149,7 @@ class Membership(models.Model):
     plan = models.CharField(max_length=10, choices=PLAN_CHOICES)
     start_date = models.DateField(auto_now_add=True)
     expiry_date = models.DateField(null=True, blank=True)
+    credits = models.PositiveIntegerField(default=5, help_text="Credits used to unlock characters. Each character costs 5 credits.")
 
 
 # -------------------------------

@@ -72,13 +72,36 @@ def chat_view(request, relation_id):
     }
     return render(request, 'mainapp/chat.html', context)
 
-# --- Standard Authentication Views ---
+# --- Standard Authentication Views --- 
+import random
+
+
+from django.core.mail import send_mail
+from django.conf import settings
+
+def send_otp_email(email):
+    """Generate a 6-digit OTP and send it to the given email."""
+    otp = str(random.randint(100000, 999999)) 
+    
+    subject = "Email Verification OTP"
+    message = f"Your OTP for verification is: {otp}\nThis OTP will expire in 10 minutes."
+    
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,  # Ensure this is set in settings.py
+        [email],
+        fail_silently=False,
+    )
+    
+    return otp
+
 
 def login_view(request):
     """Template-based login view."""
     if request.user.is_authenticated:
         return redirect('home')
-    if request.method == 'POST': # Corrected typo from 'emthod'
+    if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')
         # Authenticate using email
@@ -134,11 +157,54 @@ class RelationDeleteView(LoginRequiredMixin, DeleteView):
 
 # --- API Authentication ---
 
+
 class ApiRegisterView(generics.CreateAPIView):
     """API Endpoint for standard email & password registration."""
     queryset = CustomUser.objects.all()
     serializer_class = UserRegisterSerializer
-    permission_classes = [AllowAny]     # Anyone can register
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        email = request.data.get("email")
+
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate and send OTP
+        otp = send_otp_email(email)
+
+        # Store OTP in cache for 10 minutes
+        cache.set(f"otp_{email}", otp, timeout=600)
+
+        return Response({
+            "message": "OTP sent to email. Please verify before completing registration."
+        }, status=status.HTTP_200_OK) # Anyone can register
+
+from rest_framework.views import APIView
+from django.core.cache import cache
+class VerifyOtpView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("otp")
+
+        stored_otp = cache.get(f"otp_{email}")
+        if stored_otp is None:
+            return Response({"error": "OTP expired or invalid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if stored_otp != otp:
+            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # OTP is correct → Proceed with user creation
+        serializer = UserRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        cache.delete(f"otp_{email}")  # Clean up
+
+        return Response({"message": "Email verified & user registered successfully."})
+
 
 class ApiLoginView(ObtainAuthToken):
     """API Endpoint for standard email & password login. Returns auth token."""
@@ -346,3 +412,13 @@ class GeminiChatStreamView(APIView):
                 yield err.encode('utf-8')
 
         return StreamingHttpResponse(stream_gen(), content_type='text/event-stream')
+
+from .models import ChatHistory
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def chat_history_list(request):
+    chat_histories = ChatHistory.objects.filter(user=request.user).select_related('relation').order_by('-timestamp')
+    return render(request, 'mainapp/callhistory_list.html', {
+        'chat_histories': chat_histories
+    })

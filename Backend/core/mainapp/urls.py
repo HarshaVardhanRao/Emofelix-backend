@@ -4,6 +4,7 @@ from django.urls import path, include
 from . import views
 from django.contrib.auth.views import LogoutView
 from rest_framework.routers import DefaultRouter
+from .views import chat_history_list
 
 router = DefaultRouter()
 router.register(r'relations', views.RelationViewSet, basename='relation-api')
@@ -29,6 +30,7 @@ urlpatterns = [
 
     # API Authentication
     path('api/register/', views.ApiRegisterView.as_view(), name='api-register'),
+    path('api/verify-otp/', views.VerifyOtpView.as_view(), name='verify-otp'),
     path('api/login/', views.ApiLoginView.as_view(), name='api-login'),
     path('api/logout/', views.ApiLogoutView.as_view(), name='api-logout'),
     path('api/auth/google-login/', views.GoogleLoginView.as_view(), name='google-login'),
@@ -41,4 +43,6 @@ urlpatterns = [
     path('api/relations/<int:relation_id>/start-call/', views.StartCallView.as_view(), name='api-start-call'),
     path('api/characters/<int:character_id>/start-call/', views.StartCharacterCallView.as_view(), name='api-start-character-call'),
     path('api/chat/gemini/stream/', views.GeminiChatStreamView.as_view(), name='api-gemini-chat-stream'),
+
+    path('chat-history/', chat_history_list, name='chat-history-list'),
 ]
