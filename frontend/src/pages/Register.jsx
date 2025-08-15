@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { API_BASE_URL } from '../apiBase';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -15,6 +16,9 @@ const Register = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otp, setOtp] = useState('');
+    const [otpLoading, setOtpLoading] = useState(false);
 
     const { register, googleLogin } = useAuth();
     const navigate = useNavigate();
@@ -115,11 +119,42 @@ const Register = () => {
         }
 
         try {
+            // Send OTP first
+            const response = await fetch(`${API_BASE_URL}/api/send-otp/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email: formData.email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setShowOtpModal(true);
+            } else {
+                setError(data.error || 'Failed to send OTP');
+            }
+        } catch (error) {
+            console.error('OTP send error:', error);
+            setError('Failed to send OTP. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOtpSubmit = async (e) => {
+        e.preventDefault();
+        setOtpLoading(true);
+        setError('');
+
+        try {
             const result = await register({
                 email: formData.email,
                 password: formData.password,
                 first_name: formData.first_name,
                 last_name: formData.last_name,
+                otp: otp,
             });
 
             if (result.success) {
@@ -127,11 +162,18 @@ const Register = () => {
             } else {
                 setError(result.error);
             }
-        } catch {
+        } catch (error) {
+            console.error('Registration error:', error);
             setError('An unexpected error occurred. Please try again.');
         } finally {
-            setLoading(false);
+            setOtpLoading(false);
         }
+    };
+
+    const closeOtpModal = () => {
+        setShowOtpModal(false);
+        setOtp('');
+        setError('');
     };
 
     return (
@@ -279,10 +321,10 @@ const Register = () => {
                             {loading ? (
                                 <div className="flex items-center justify-center">
                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                    Creating Account...
+                                    Sending OTP...
                                 </div>
                             ) : (
-                                'Create Account'
+                                'Send OTP'
                             )}
                         </button>
 
@@ -359,6 +401,88 @@ const Register = () => {
                     </p>
                 </div>
             </div>
+
+            {/* OTP Modal */}
+            {showOtpModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+                        <div className="text-center mb-6">
+                            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                                Verify Your Email
+                            </h3>
+                            <p className="text-gray-600">
+                                We've sent a 6-digit verification code to
+                            </p>
+                            <p className="text-primary-600 font-medium">
+                                {formData.email}
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleOtpSubmit} className="space-y-6">
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+                                    <AlertCircle className="h-5 w-5 text-red-500" />
+                                    <span className="text-red-700 text-sm">{error}</span>
+                                </div>
+                            )}
+
+                            <div>
+                                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Verification Code
+                                </label>
+                                <input
+                                    id="otp"
+                                    type="text"
+                                    maxLength="6"
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-center text-xl tracking-widest"
+                                    placeholder="000000"
+                                    autoComplete="off"
+                                />
+                            </div>
+
+                            <div className="flex space-x-4">
+                                <button
+                                    type="button"
+                                    onClick={closeOtpModal}
+                                    className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={otpLoading || otp.length !== 6}
+                                    className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {otpLoading ? (
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                            Verifying...
+                                        </div>
+                                    ) : (
+                                        'Verify & Register'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+
+                        <div className="text-center mt-4">
+                            <p className="text-sm text-gray-500">
+                                Didn't receive the code?{' '}
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    className="text-primary-600 hover:text-primary-700 font-medium"
+                                >
+                                    Resend OTP
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

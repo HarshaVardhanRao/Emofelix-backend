@@ -30,7 +30,7 @@ urlpatterns = [
 
     # API Authentication
     path('api/register/', views.ApiRegisterView.as_view(), name='api-register'),
-    path('api/verify-otp/', views.VerifyOtpView.as_view(), name='verify-otp'),
+    path('api/send-otp/', views.send_otp_view, name='verify-otp'),
     path('api/login/', views.ApiLoginView.as_view(), name='api-login'),
     path('api/logout/', views.ApiLogoutView.as_view(), name='api-logout'),
     path('api/auth/google-login/', views.GoogleLoginView.as_view(), name='google-login'),

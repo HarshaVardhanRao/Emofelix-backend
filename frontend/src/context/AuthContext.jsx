@@ -72,14 +72,38 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await axios.post(`${API_BASE_URL}/api/register/`, userData);
 
-            // Auto-login after registration
-            const loginResult = await login(userData.email, userData.password);
-            return loginResult;
+            // Check if the registration was successful
+            if (response.status === 201 || response.status === 200) {
+                // Auto-login after registration
+                const loginResult = await login(userData.email, userData.password);
+                return loginResult;
+            } else {
+                return {
+                    success: false,
+                    error: response.data?.message || 'Registration failed'
+                };
+            }
         } catch (error) {
             console.error('Registration failed:', error);
+            let errorMessage = 'Registration failed';
+
+            if (error.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMessage = error.response.data;
+                } else if (error.response.data.error) {
+                    errorMessage = error.response.data.error;
+                } else if (error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response.data.email) {
+                    errorMessage = error.response.data.email[0];
+                } else {
+                    errorMessage = Object.values(error.response.data)[0];
+                }
+            }
+
             return {
                 success: false,
-                error: error.response?.data || 'Registration failed'
+                error: errorMessage
             };
         }
     };

@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LogoutView as TemplateLogoutView
+from django.core.cache import cache
 from django.http import StreamingHttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
@@ -19,6 +20,7 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 
 # --- Google Auth Imports ---
 from google.oauth2 import id_token
@@ -157,6 +159,20 @@ class RelationDeleteView(LoginRequiredMixin, DeleteView):
 
 # --- API Authentication ---
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_otp_view(request):
+    email = request.data.get("email")
+    if not email:
+        return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    otp = send_otp_email(email)
+    # Store OTP in cache for 10 minutes
+    cache.set(f"otp_{email}", otp, timeout=600)
+
+    return Response({
+        "message": "OTP sent to email. Please verify before completing registration."
+    }, status=status.HTTP_200_OK)
 
 class ApiRegisterView(generics.CreateAPIView):
     """API Endpoint for standard email & password registration."""
@@ -166,45 +182,33 @@ class ApiRegisterView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         email = request.data.get("email")
-
+        user_otp = request.data.get("otp")
+        
         if not email:
             return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user_otp:
+            return Response({"error": "OTP is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate and send OTP
-        otp = send_otp_email(email)
+        generated_otp = cache.get(f"otp_{email}")
+        if not generated_otp:
+            return Response({"error": "OTP Expired"}, status=status.HTTP_410_GONE)
 
-        # Store OTP in cache for 10 minutes
-        cache.set(f"otp_{email}", otp, timeout=600)
+        if user_otp != generated_otp:
+            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # OTP is valid, now create the user
+        response = super().create(request, *args, **kwargs)
+        
+        # Clear OTP from cache
+        cache.delete(f"otp_{email}")
+        
         return Response({
-            "message": "OTP sent to email. Please verify before completing registration."
-        }, status=status.HTTP_200_OK) # Anyone can register
+            "message": "OTP verified successfully. User registered."
+        }, status=status.HTTP_201_CREATED) # Anyone can register
 
 from rest_framework.views import APIView
 from django.core.cache import cache
-class VerifyOtpView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        email = request.data.get("email")
-        otp = request.data.get("otp")
-
-        stored_otp = cache.get(f"otp_{email}")
-        if stored_otp is None:
-            return Response({"error": "OTP expired or invalid."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if stored_otp != otp:
-            return Response({"error": "Incorrect OTP."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # OTP is correct → Proceed with user creation
-        serializer = UserRegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        cache.delete(f"otp_{email}")  # Clean up
-
-        return Response({"message": "Email verified & user registered successfully."})
-
 
 class ApiLoginView(ObtainAuthToken):
     """API Endpoint for standard email & password login. Returns auth token."""
