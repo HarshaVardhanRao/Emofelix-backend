@@ -74,7 +74,7 @@ const Navbar = () => {
                     <div className="flex items-center">
                         <Link to={isAuthenticated ? "/loved-ones" : "/"} className="flex items-center space-x-3 group">
                             <div className="relative">
-                                <img src="/emofelixlogo.png" alt="Emofelix Logo" className="h-10 w-10" />
+                                <img src="/emofelixlogo.png" alt="Emofelix Logo" className="w-10" />
                             </div>
                             <span className="text-2xl font-bold bg-gradient-to-r from-love-400 to-warm-400 bg-clip-text text-transparent">
                                 Emofelix
