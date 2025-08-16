@@ -399,7 +399,7 @@ const Profile = () => {
                                 </button>
                                 <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
                                     <Shield className="h-5 w-5 text-gray-600" />
-                                    <span className="text-gray-700">Privacy & Security</span>
+                                    <a href='/Terms and conditions.pdf' className="text-gray-700">Privacy & Security</a>
                                 </button>
                                 <button
                                     onClick={logout}
