@@ -148,21 +148,21 @@ const Home = () => {
                                 icon: Heart,
                                 title: "💝 Missing Your Mom?",
                                 description: "Create an AI version of your mother. Get her comforting words, advice, and feel her love whenever you need it most.",
-                                image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+                                image: "/mother.jpg",
                                 gradient: "from-love-400 to-warm-400"
                             },
                             {
                                 icon: Users,
-                                title: "� Lost a Best Friend?",
+                                title: "💝 Lost a Best Friend?",
                                 description: "Recreate conversations with your dearest friend. Share inside jokes, get support, and feel their friendship again.",
-                                image: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+                                image: "/bestfriend.jpg",
                                 gradient: "from-comfort-400 to-peace-400"
                             },
                             {
                                 icon: Sparkles,
-                                title: "� Missing Grandparents?",
+                                title: "💝 Missing Grandparents?",
                                 description: "Hear their wisdom again. Get their loving stories, life advice, and feel their warm hugs through words.",
-                                image: "https://images.unsplash.com/photo-1560977068-3f4e8ba2f8fc?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+                                image: "/grandfather.jpg",
                                 gradient: "from-warm-400 to-joy-400"
                             }
                         ].map((feature, index) => (
@@ -203,7 +203,7 @@ const Home = () => {
                         <div className="grid md:grid-cols-4 gap-8 text-center">
                             {[
                                 { number: "💕 50K+", label: "People Finding Comfort", icon: "🤗" },
-                                { number: "💬 2M+", label: "Healing Conversations", icon: "�" },
+                                { number: "💬 2M+", label: "Healing Conversations", icon: "💝" },
                                 { number: "😊 99%", label: "Feel Less Lonely", icon: "✨" },
                                 { number: "🌙 24/7", label: "Always There for You", icon: "🏠" }
                             ].map((stat, index) => (
@@ -231,25 +231,19 @@ const Home = () => {
                     <div className="grid lg:grid-cols-3 gap-8">
                         {[
                             {
-                                name: "Sarah Johnson",
-                                role: "Missing her mom �",
-                                content: "After losing my mom, Emofelix helped me feel her love again. I can ask for her recipes and hear her comforting words. It's like she's still with me. ��💕",
+                                name: "Mahesh",
+                                content: "Using EmoFelix AI feels exciting and stress-free. It understands my needs and makes me feel confident while working.",
                                 rating: 5,
-                                avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b820?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
                             },
                             {
-                                name: "Mike Chen",
-                                role: "Reconnecting with dad �‍👦",
-                                content: "My dad and I barely talked. Now I can have the conversations we never had. His AI helps me understand him better and heal our relationship. 🥹",
+                                name: "Raju",
+                                content: "I feel happy and relaxed when I use EmoFelix. The smooth flow gives me positive energy every time.",
                                 rating: 5,
-                                avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
                             },
                             {
-                                name: "Emily Davis",
-                                role: "Finding her best friend �",
-                                content: "When my best friend moved away, I was heartbroken. Now I can chat with her AI anytime and it feels like she never left. True friendship never dies! �",
+                                name: "Ganesh",
+                                content: "EmoFelix makes me feel connected and supported. It’s like having a smart friend who is always ready to help.",
                                 rating: 5,
-                                avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
                             }
                         ].map((testimonial, index) => (
                             <div key={index} className="group glass-card rounded-3xl p-8 card-hover gentle-bounce"
@@ -266,14 +260,8 @@ const Home = () => {
                                 </p>
 
                                 <div className="flex items-center">
-                                    <img
-                                        src={testimonial.avatar}
-                                        alt={testimonial.name}
-                                        className="w-14 h-14 rounded-full mr-4 group-hover:scale-110 transition-transform border-2 border-love-400/30"
-                                    />
                                     <div>
                                         <div className="font-bold text-white group-hover:loving-text transition-all">{testimonial.name}</div>
-                                        <div className="text-pink-300 text-sm">{testimonial.role}</div>
                                     </div>
                                 </div>
                             </div>
