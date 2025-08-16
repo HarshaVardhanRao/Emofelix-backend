@@ -74,8 +74,7 @@ const Navbar = () => {
                     <div className="flex items-center">
                         <Link to={isAuthenticated ? "/loved-ones" : "/"} className="flex items-center space-x-3 group">
                             <div className="relative">
-                                <Heart className="h-10 w-10 text-love-400 hover:text-love-300 transition-colors duration-300 animate-warm-pulse" />
-                                <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-warm-300 animate-peaceful-float" />
+                                <img src="/emofelixlogo.png" alt="Emofelix Logo" className="h-10 w-10" />
                             </div>
                             <span className="text-2xl font-bold bg-gradient-to-r from-love-400 to-warm-400 bg-clip-text text-transparent">
                                 Emofelix
