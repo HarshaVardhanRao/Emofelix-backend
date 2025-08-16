@@ -53,13 +53,6 @@ const Profile = () => {
     });
     const [passwordLoading, setPasswordLoading] = useState(false);
 
-    useEffect(() => {
-        const initializeProfile = async () => {
-            await fetchProfile();
-            await fetchStats();
-        };
-        initializeProfile();
-    }, [fetchProfile, fetchStats]);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -90,6 +83,14 @@ const Profile = () => {
             console.error('Failed to fetch stats:', error);
         }
     }, [user]);
+    
+    useEffect(() => {
+        const initializeProfile = async () => {
+            await fetchProfile();
+            await fetchStats();
+        };
+        initializeProfile();
+    }, [fetchProfile, fetchStats]);
 
     const handleSaveProfile = async () => {
         setSaving(true);
