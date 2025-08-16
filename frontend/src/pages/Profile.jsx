@@ -38,7 +38,7 @@ const Profile = () => {
         memberSince: '',
         currentPlan: 'Free'
     });
-    
+
     // Password modal states
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({
@@ -126,12 +126,12 @@ const Profile = () => {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-        
+
         if (passwordForm.newPassword !== passwordForm.confirmPassword) {
             alert('New passwords do not match!');
             return;
         }
-        
+
         if (passwordForm.newPassword.length < 6) {
             alert('New password must be at least 6 characters long!');
             return;
@@ -143,7 +143,7 @@ const Profile = () => {
                 current_password: passwordForm.currentPassword,
                 new_password: passwordForm.newPassword
             });
-            
+
             alert('Password changed successfully!');
             setShowPasswordModal(false);
             setPasswordForm({
@@ -389,7 +389,7 @@ const Profile = () => {
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
                             <div className="space-y-3">
-                                <button 
+                                <button
                                     onClick={openAccountSettings}
                                     className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors"
                                 >

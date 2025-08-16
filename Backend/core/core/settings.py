@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-8pxgjz(j2n#uf6#u(6-(%js0w6$col@39h)yrg#c1%aj4eu+jn
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["emofelix-backend.onrender.com", "emofelixapp.netlify.app", "127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["emofelix-backend.onrender.com", "emofelixapp.netlify.app", "127.0.0.1", "localhost", "emofelix.in"]
 
 
 # Application definition
@@ -124,7 +124,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8001",  # FastAPI
     "http://127.0.0.1:8001",
     os.getenv('FASTAPI_URL', "https://emofelix-fastapi.onrender.com"),
-    os.getenv('FRONTEND_URL', "https://emofelixapp.netlify.app")
+    os.getenv('FRONTEND_URL', "https://emofelix.netlify.app"),
+    "https://emofelix.in",
+    "http://emofelix.in"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
