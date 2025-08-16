@@ -179,7 +179,7 @@ const Home = () => {
                                         <img
                                             src={feature.image}
                                             alt={feature.title}
-                                            className="w-full h-48 object-cover rounded-2xl mb-4 group-hover:scale-105 transition-transform duration-300 object-top"
+                                            className="w-full h-56 object-cover rounded-2xl mb-4 group-hover:scale-105 transition-transform duration-300 object-top"
                                         />
                                         <feature.icon className="h-12 w-12 text-love-400 group-hover:text-warm-400 transition-colors" />
                                     </div>
