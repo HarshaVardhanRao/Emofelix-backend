@@ -256,7 +256,7 @@ class GoogleLoginView(APIView):
                     'username': email,
                     'first_name': idinfo.get('given_name', ''),
                     'last_name': idinfo.get('family_name', ''),
-                    'emocoins': 5  # Default to 5 emocoins
+                    'emocoins': 15  # Default to 5 emocoins
                 }
             )
             drf_token, _ = Token.objects.get_or_create(user=user)
