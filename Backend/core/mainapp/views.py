@@ -351,6 +351,7 @@ class ChangePasswordView(APIView):
                 {'error': 'Both current password and new password are required.'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
 
         # Verify current password
         if not request.user.check_password(current_password):

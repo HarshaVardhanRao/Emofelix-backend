@@ -1,17 +1,39 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
-from django.db.models import Q
-from .models import CustomUser, Membership, ReferralCode
+from django.db.models import Q, Sum, Count, Avg
+from django.utils import timezone
+from django.http import HttpResponse, JsonResponse
+from datetime import timedelta
+import csv
+import json
+from .models import CustomUser, Membership, ReferralCode, Character, Call, CallHistory
 from .forms import StaffUserEditForm, CreditsAdjustForm, ReferralCodeForm, ReferralCodeUpdateForm
 
 @user_passes_test(lambda u: u.is_staff)
 def support_dashboard(request):
-    return render(request, 'mainapp/support_dashboard.html')
+    # Calculate statistics for dashboard
+    total_users = CustomUser.objects.count()
+    active_codes = ReferralCode.objects.filter(active=True).count()
+    total_redemptions = ReferralCode.objects.aggregate(Sum('redeemed_count'))['redeemed_count__sum'] or 0
+    credits_distributed = ReferralCode.objects.aggregate(
+        total=Sum('redeemed_count') * Sum('credits')
+    )['total'] or 0
+    new_users_week = CustomUser.objects.filter(
+        date_joined__gte=timezone.now() - timedelta(days=7)
+    ).count()
+    
+    context = {
+        'total_users': total_users,
+        'active_codes': active_codes,
+        'credits_distributed': credits_distributed,
+        'new_users_week': new_users_week,
+    }
+    return render(request, 'mainapp/support_dashboard.html', context)
 
 @user_passes_test(lambda u: u.is_staff)
 def user_list(request):
-    users = CustomUser.objects.all()
+    users = CustomUser.objects.select_related('membership').all()
     return render(request, 'mainapp/user_list.html', {'users': users})
 
 @user_passes_test(lambda u: u.is_staff)
@@ -38,7 +60,12 @@ def credits_adjust(request):
 
     # Filtering logic
     if search_query:
-        users = users.filter(username__icontains=search_query)
+        users = users.filter(
+            Q(username__icontains=search_query) | 
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
     if gender:
         users = users.filter(gender=gender)
     if date_joined_before:
@@ -46,9 +73,9 @@ def credits_adjust(request):
     if date_joined_after:
         users = users.filter(date_joined__gte=date_joined_after)
     if new_or_existing == 'new':
-        users = users.filter(date_joined__gte=timezone.now()-timezone.timedelta(days=7))
+        users = users.filter(date_joined__gte=timezone.now()-timedelta(days=7))
     elif new_or_existing == 'existing':
-        users = users.filter(date_joined__lt=timezone.now()-timezone.timedelta(days=7))
+        users = users.filter(date_joined__lt=timezone.now()-timedelta(days=7))
 
     selected_users = request.POST.getlist('selected_users')
     if request.method == 'POST':
@@ -57,12 +84,17 @@ def credits_adjust(request):
             target_users = users
         else:
             target_users = users.filter(id__in=selected_users)
+        
+        updated_count = 0
         for u in target_users:
             membership, _ = Membership.objects.get_or_create(user=u)
             membership.credits += credits
             membership.save()
-        messages.success(request, 'Credits updated.')
+            updated_count += 1
+            
+        messages.success(request, f'Credits {"added to" if credits > 0 else "subtracted from"} {updated_count} users.')
         return redirect('credits-adjust')
+        
     return render(request, 'mainapp/credits_adjust.html', {
         'users': users,
         'search_query': search_query,
@@ -101,3 +133,198 @@ def referral_code_update(request, code_id):
     else:
         form = ReferralCodeUpdateForm(instance=code)
     return render(request, 'mainapp/referral_code_form.html', {'form': form, 'code': code})
+
+
+@user_passes_test(lambda u: u.is_staff)
+def export_users_csv(request):
+    """Export users data as CSV file."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="users_export.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow([
+        'ID', 'Username', 'Email', 'First Name', 'Last Name', 
+        'Gender', 'Date of Birth', 'Date Joined', 'Last Login', 
+        'Is Active', 'Is Staff', 'Emocoins', 'Credits', 
+        'Characters Count', 'Calls Count'
+    ])
+    
+    users = CustomUser.objects.select_related('membership').all()
+    
+    for user in users:
+        # Get or create membership
+        membership, _ = Membership.objects.get_or_create(user=user)
+        
+        writer.writerow([
+            user.pk,
+            user.username,
+            user.email,
+            user.first_name,
+            user.last_name,
+            user.gender or '',
+            user.date_of_birth or '',
+            user.date_joined.strftime('%Y-%m-%d %H:%M:%S'),
+            user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else '',
+            'Yes' if user.is_active else 'No',
+            'Yes' if user.is_staff else 'No',
+            user.emocoins,
+            membership.credits,
+            Character.objects.filter(user=user).count(),
+            Call.objects.filter(user=user).count(),
+        ])
+    
+    return response
+
+
+@user_passes_test(lambda u: u.is_staff)
+def export_users_json(request):
+    """Export users data as JSON file."""
+    users = CustomUser.objects.select_related('membership').all()
+    
+    users_data = []
+    for user in users:
+        membership, _ = Membership.objects.get_or_create(user=user)
+        
+        user_data = {
+            'id': user.pk,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'gender': user.gender,
+            'date_of_birth': user.date_of_birth.isoformat() if user.date_of_birth else None,
+            'date_joined': user.date_joined.isoformat(),
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'is_active': user.is_active,
+            'is_staff': user.is_staff,
+            'emocoins': user.emocoins,
+            'credits': membership.credits,
+            'characters_count': Character.objects.filter(user=user).count(),
+            'calls_count': Call.objects.filter(user=user).count(),
+        }
+        users_data.append(user_data)
+    
+    response = HttpResponse(
+        json.dumps(users_data, indent=2),
+        content_type='application/json'
+    )
+    response['Content-Disposition'] = 'attachment; filename="users_export.json"'
+    return response
+
+
+@user_passes_test(lambda u: u.is_staff)
+def generate_analytics_report(request):
+    """Generate comprehensive analytics report."""
+    # Date ranges
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    year_ago = today - timedelta(days=365)
+    
+    # User Statistics
+    total_users = CustomUser.objects.count()
+    active_users = CustomUser.objects.filter(is_active=True).count()
+    new_users_week = CustomUser.objects.filter(date_joined__gte=week_ago).count()
+    new_users_month = CustomUser.objects.filter(date_joined__gte=month_ago).count()
+    
+    # Gender distribution
+    gender_stats = CustomUser.objects.values('gender').annotate(count=Count('id')).order_by('gender')
+    
+    # Character Statistics
+    total_characters = Character.objects.count()
+    characters_by_type = Character.objects.values('character_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Call Statistics
+    total_calls = Call.objects.count()
+    calls_this_week = Call.objects.filter(timestamp__gte=week_ago).count()
+    calls_this_month = Call.objects.filter(timestamp__gte=month_ago).count()
+    
+    # Referral Code Statistics
+    total_referral_codes = ReferralCode.objects.count()
+    active_referral_codes = ReferralCode.objects.filter(active=True).count()
+    total_redemptions = ReferralCode.objects.aggregate(Sum('redeemed_count'))['redeemed_count__sum'] or 0
+    
+    # Credits Statistics
+    total_credits_distributed = Membership.objects.aggregate(Sum('credits'))['credits__sum'] or 0
+    avg_credits_per_user = Membership.objects.aggregate(Avg('credits'))['credits__avg'] or 0
+    
+    # Emocoins Statistics
+    total_emocoins = CustomUser.objects.aggregate(Sum('emocoins'))['emocoins__sum'] or 0
+    avg_emocoins_per_user = CustomUser.objects.aggregate(Avg('emocoins'))['emocoins__avg'] or 0
+    
+    # User engagement trends (last 30 days)
+    user_registrations_trend = []
+    for i in range(30):
+        date = today - timedelta(days=i)
+        count = CustomUser.objects.filter(date_joined__date=date).count()
+        user_registrations_trend.append({
+            'date': date.isoformat(),
+            'count': count
+        })
+    user_registrations_trend.reverse()
+    
+    # Calls trend (last 30 days)
+    calls_trend = []
+    for i in range(30):
+        date = today - timedelta(days=i)
+        count = Call.objects.filter(timestamp__date=date).count()
+        calls_trend.append({
+            'date': date.isoformat(),
+            'count': count
+        })
+    calls_trend.reverse()
+    
+    report_data = {
+        'generated_at': timezone.now().isoformat(),
+        'user_statistics': {
+            'total_users': total_users,
+            'active_users': active_users,
+            'inactive_users': total_users - active_users,
+            'new_users_this_week': new_users_week,
+            'new_users_this_month': new_users_month,
+            'gender_distribution': list(gender_stats),
+        },
+        'character_statistics': {
+            'total_characters': total_characters,
+            'characters_by_type': list(characters_by_type),
+            'avg_characters_per_user': round(total_characters / total_users, 2) if total_users > 0 else 0,
+        },
+        'call_statistics': {
+            'total_calls': total_calls,
+            'calls_this_week': calls_this_week,
+            'calls_this_month': calls_this_month,
+            'avg_calls_per_user': round(total_calls / total_users, 2) if total_users > 0 else 0,
+        },
+        'referral_statistics': {
+            'total_codes': total_referral_codes,
+            'active_codes': active_referral_codes,
+            'total_redemptions': total_redemptions,
+            'avg_redemptions_per_code': round(total_redemptions / total_referral_codes, 2) if total_referral_codes > 0 else 0,
+        },
+        'credits_statistics': {
+            'total_credits_distributed': total_credits_distributed,
+            'avg_credits_per_user': round(avg_credits_per_user, 2),
+        },
+        'emocoins_statistics': {
+            'total_emocoins': total_emocoins,
+            'avg_emocoins_per_user': round(avg_emocoins_per_user, 2),
+        },
+        'trends': {
+            'user_registrations': user_registrations_trend,
+            'calls': calls_trend,
+        }
+    }
+    
+    if request.GET.get('format') == 'json':
+        response = HttpResponse(
+            json.dumps(report_data, indent=2),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = 'attachment; filename="analytics_report.json"'
+        return response
+    else:
+        return render(request, 'mainapp/analytics_report.html', {
+            'report': report_data
+        })

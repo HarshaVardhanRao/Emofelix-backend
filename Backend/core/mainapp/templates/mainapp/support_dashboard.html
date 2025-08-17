@@ -1,9 +1,169 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Support Dashboard - Emofelix{% endblock %}
+
 {% block content %}
-<h1>Support Dashboard</h1>
-<ul>
-  <li><a href="{% url 'user-list' %}">User Management</a></li>
-  <li><a href="{% url 'credits-adjust' %}">Credits Management</a></li>
-  <li><a href="{% url 'referral-code-list' %}">Referral Code Management</a></li>
-</ul>
+<div class="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-white mb-2">Support Dashboard</h1>
+      <p class="text-pink-200">Welcome back, {{ user.first_name|default:user.username }}! Manage your platform effectively.</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <!-- Total Users Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Total Users</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ total_users|default:"0" }}</p>
+          </div>
+          <div class="p-3 rounded-full bg-blue-100">
+            <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Codes Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Active Codes</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ active_codes|default:"0" }}</p>
+          </div>
+          <div class="p-3 rounded-full bg-green-100">
+            <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credits Distributed Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">Credits Distributed</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ credits_distributed|default:"0" }}</p>
+          </div>
+          <div class="p-3 rounded-full bg-purple-100">
+            <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Users This Week Card -->
+      <div class="bg-white rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-gray-600 text-sm font-medium">New Users (7 days)</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ new_users_week|default:"0" }}</p>
+          </div>
+          <div class="p-3 rounded-full bg-yellow-100">
+            <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Management Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- User Management -->
+      <a href="{% url 'user-list' %}" class="block bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200 group">
+        <div class="flex items-start space-x-4">
+          <div class="p-3 rounded-lg bg-blue-500 text-white group-hover:scale-110 transition-transform duration-200">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">User Management</h3>
+            <p class="text-gray-600">View, edit, and manage user accounts. Handle user permissions and account status.</p>
+          </div>
+        </div>
+      </a>
+
+      <!-- Credits Management -->
+      <a href="{% url 'credits-adjust' %}" class="block bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200 group">
+        <div class="flex items-start space-x-4">
+          <div class="p-3 rounded-lg bg-green-500 text-white group-hover:scale-110 transition-transform duration-200">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Credits Management</h3>
+            <p class="text-gray-600">Adjust user credits in bulk. Apply filters and manage credit distribution efficiently.</p>
+          </div>
+        </div>
+      </a>
+
+      <!-- Referral Code Management -->
+      <a href="{% url 'referral-code-list' %}" class="block bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200 group">
+        <div class="flex items-start space-x-4">
+          <div class="p-3 rounded-lg bg-purple-500 text-white group-hover:scale-110 transition-transform duration-200">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">Referral Codes</h3>
+            <p class="text-gray-600">Create, manage, and monitor referral codes. Track redemptions and rewards.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 mb-4">Export & Reports</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Create Referral Code -->
+        <a href="{% url 'referral-code-create' %}" 
+           class="inline-flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          Create Referral Code
+        </a>
+        
+        <!-- Export Users CSV -->
+        <a href="{% url 'export-users-csv' %}" 
+           class="inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Export CSV
+        </a>
+        
+        <!-- Export Users JSON -->
+        <a href="{% url 'export-users-json' %}" 
+           class="inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Export JSON
+        </a>
+        
+        <!-- Analytics Report -->
+        <a href="{% url 'analytics-report' %}" 
+           class="inline-flex items-center justify-center px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-center">
+          <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          Analytics Report
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

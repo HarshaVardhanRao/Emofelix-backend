@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load support_tags %}
+
+{% block title %}Analytics Report - Support Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100">
+    <div class="container mx-auto px-6 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        📊 Analytics Report
+                    </h1>
+                    <p class="text-gray-600 mt-2">Generated on {{ report.generated_at|date:"F d, Y at g:i A" }}</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{% url 'analytics-report' %}?format=json" 
+                       class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+                        <i class="fas fa-download"></i>
+                        Download JSON
+                    </a>
+                    <a href="{% url 'support-dashboard' %}" 
+                       class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Statistics -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-users text-purple-600"></i>
+                User Statistics
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-100">Total Users</p>
+                            <p class="text-3xl font-bold">{{ report.user_statistics.total_users }}</p>
+                        </div>
+                        <i class="fas fa-users text-3xl text-blue-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100">Active Users</p>
+                            <p class="text-3xl font-bold">{{ report.user_statistics.active_users }}</p>
+                        </div>
+                        <i class="fas fa-user-check text-3xl text-green-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-100">New This Week</p>
+                            <p class="text-3xl font-bold">{{ report.user_statistics.new_users_this_week }}</p>
+                        </div>
+                        <i class="fas fa-user-plus text-3xl text-purple-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-pink-100">New This Month</p>
+                            <p class="text-3xl font-bold">{{ report.user_statistics.new_users_this_month }}</p>
+                        </div>
+                        <i class="fas fa-calendar-plus text-3xl text-pink-200"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gender Distribution -->
+            <div class="mt-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Gender Distribution</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% for gender in report.user_statistics.gender_distribution %}
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700 capitalize">{{ gender.gender|default:"Not Specified" }}</span>
+                                <span class="font-bold text-lg text-gray-800">{{ gender.count }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Character Statistics -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-robot text-purple-600"></i>
+                Character Statistics
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-indigo-100">Total Characters</p>
+                            <p class="text-3xl font-bold">{{ report.character_statistics.total_characters }}</p>
+                        </div>
+                        <i class="fas fa-robot text-3xl text-indigo-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-teal-100">Avg per User</p>
+                            <p class="text-3xl font-bold">{{ report.character_statistics.avg_characters_per_user }}</p>
+                        </div>
+                        <i class="fas fa-chart-line text-3xl text-teal-200"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Characters by Type -->
+            <div class="mt-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Characters by Type</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for char_type in report.character_statistics.characters_by_type %}
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-700">{{ char_type.character_type }}</span>
+                                <span class="font-bold text-lg text-gray-800">{{ char_type.count }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Call Statistics -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-phone text-purple-600"></i>
+                Call Statistics
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-orange-100">Total Calls</p>
+                            <p class="text-3xl font-bold">{{ report.call_statistics.total_calls }}</p>
+                        </div>
+                        <i class="fas fa-phone text-3xl text-orange-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-red-100">This Week</p>
+                            <p class="text-3xl font-bold">{{ report.call_statistics.calls_this_week }}</p>
+                        </div>
+                        <i class="fas fa-calendar-week text-3xl text-red-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-yellow-100">This Month</p>
+                            <p class="text-3xl font-bold">{{ report.call_statistics.calls_this_month }}</p>
+                        </div>
+                        <i class="fas fa-calendar-month text-3xl text-yellow-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-cyan-100">Avg per User</p>
+                            <p class="text-3xl font-bold">{{ report.call_statistics.avg_calls_per_user }}</p>
+                        </div>
+                        <i class="fas fa-chart-bar text-3xl text-cyan-200"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credits & Emocoins Statistics -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Credits -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-coins text-purple-600"></i>
+                    Credits Statistics
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <span class="text-purple-100">Total Credits</span>
+                            <span class="text-2xl font-bold">{{ report.credits_statistics.total_credits_distributed }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <span class="text-blue-100">Avg per User</span>
+                            <span class="text-2xl font-bold">{{ report.credits_statistics.avg_credits_per_user }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emocoins -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-heart text-purple-600"></i>
+                    Emocoins Statistics
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <span class="text-pink-100">Total Emocoins</span>
+                            <span class="text-2xl font-bold">{{ report.emocoins_statistics.total_emocoins }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white">
+                        <div class="flex items-center justify-between">
+                            <span class="text-red-100">Avg per User</span>
+                            <span class="text-2xl font-bold">{{ report.emocoins_statistics.avg_emocoins_per_user }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Statistics -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <i class="fas fa-share-alt text-purple-600"></i>
+                Referral Statistics
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-emerald-100">Total Codes</p>
+                            <p class="text-3xl font-bold">{{ report.referral_statistics.total_codes }}</p>
+                        </div>
+                        <i class="fas fa-ticket-alt text-3xl text-emerald-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-lime-500 to-lime-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-lime-100">Active Codes</p>
+                            <p class="text-3xl font-bold">{{ report.referral_statistics.active_codes }}</p>
+                        </div>
+                        <i class="fas fa-check-circle text-3xl text-lime-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-amber-100">Total Redemptions</p>
+                            <p class="text-3xl font-bold">{{ report.referral_statistics.total_redemptions }}</p>
+                        </div>
+                        <i class="fas fa-gift text-3xl text-amber-200"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-violet-500 to-violet-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-violet-100">Avg Redemptions</p>
+                            <p class="text-3xl font-bold">{{ report.referral_statistics.avg_redemptions_per_code }}</p>
+                        </div>
+                        <i class="fas fa-chart-pie text-3xl text-violet-200"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trends Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- User Registrations Trend -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">User Registrations (Last 30 Days)</h3>
+                <div class="h-64 flex items-end justify-between space-x-1">
+                    {% for day in report.trends.user_registrations %}
+                        <div class="flex-1 bg-gradient-to-t from-purple-400 to-purple-600 rounded-t" 
+                             style="height: {% if day.count > 0 %}{{ day.count|calculate_percentage:10 }}{% else %}2{% endif %}%"
+                             title="{{ day.date }}: {{ day.count }} registrations">
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Calls Trend -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Calls (Last 30 Days)</h3>
+                <div class="h-64 flex items-end justify-between space-x-1">
+                    {% for day in report.trends.calls %}
+                        <div class="flex-1 bg-gradient-to-t from-pink-400 to-pink-600 rounded-t" 
+                             style="height: {% if day.count > 0 %}{{ day.count|calculate_percentage:10 }}{% else %}2{% endif %}%"
+                             title="{{ day.date }}: {{ day.count }} calls">
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

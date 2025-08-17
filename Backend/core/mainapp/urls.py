@@ -13,6 +13,9 @@ from .support_dashboard_views import (
     referral_code_list,
     referral_code_create,
     referral_code_update,
+    export_users_csv,
+    export_users_json,
+    generate_analytics_report,
 )
 
 router = DefaultRouter()
@@ -67,4 +70,9 @@ urlpatterns = [
     path('support-dashboard/referral-codes/', referral_code_list, name='referral-code-list'),
     path('support-dashboard/referral-codes/create/', referral_code_create, name='referral-code-create'),
     path('support-dashboard/referral-codes/<int:code_id>/edit/', referral_code_update, name='referral-code-update'),
+    
+    # Export and Reports URLs
+    path('support-dashboard/export/users-csv/', export_users_csv, name='export-users-csv'),
+    path('support-dashboard/export/users-json/', export_users_json, name='export-users-json'),
+    path('support-dashboard/reports/analytics/', generate_analytics_report, name='analytics-report'),
 ]

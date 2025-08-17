@@ -19,6 +19,9 @@
                 <div class="flex items-center">
                     {% if user.is_authenticated %}
                         <span class="text-gray-700 mr-4">Welcome, {{ user.username }}</span>
+                        {% if user.is_staff %}
+                            <a href="{% url 'support-dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 mr-2">Admin Dashboard</a>
+                        {% endif %}
                         <a href="{% url 'logout' %}" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-red-500 hover:bg-red-600">Logout</a>
                     {% else %}
                         <a href="{% url 'login' %}" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Login</a>
