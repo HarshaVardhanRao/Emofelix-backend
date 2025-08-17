@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Credits Management</h2>
+<form method="get">
+  <label>Search Username:</label>
+  <input type="text" name="search" value="{{ search_query }}">
+  <label>Gender:</label>
+  <select name="gender">
+    <option value="">Any</option>
+    <option value="male" {% if gender == 'male' %}selected{% endif %}>Male</option>
+    <option value="female" {% if gender == 'female' %}selected{% endif %}>Female</option>
+    <option value="other" {% if gender == 'other' %}selected{% endif %}>Other</option>
+  </select>
+  <label>Date Joined Before:</label>
+  <input type="date" name="date_joined_before" value="{{ date_joined_before }}">
+  <label>Date Joined After:</label>
+  <input type="date" name="date_joined_after" value="{{ date_joined_after }}">
+  <label>New/Existing:</label>
+  <select name="new_or_existing">
+    <option value="">Any</option>
+    <option value="new" {% if new_or_existing == 'new' %}selected{% endif %}>New</option>
+    <option value="existing" {% if new_or_existing == 'existing' %}selected{% endif %}>Existing</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+<form method="post">
+  {% csrf_token %}
+  <label>Credits to add/subtract:</label>
+  <input type="number" name="credits" required>
+  <table>
+    <tr>
+      <th><input type="checkbox" name="selected_users" value="all"> All</th>
+      <th>ID</th><th>Username</th><th>Email</th><th>Gender</th><th>Date Joined</th>
+    </tr>
+    {% for user in users %}
+    <tr>
+      <td><input type="checkbox" name="selected_users" value="{{ user.id }}"></td>
+      <td>{{ user.id }}</td>
+      <td>{{ user.username }}</td>
+      <td>{{ user.email }}</td>
+      <td>{{ user.gender|default:'-' }}</td>
+      <td>{{ user.date_joined }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <button type="submit">Assign Credits</button>
+</form>
+<a href="{% url 'support-dashboard' %}">Back to Dashboard</a>
+{% endblock %}

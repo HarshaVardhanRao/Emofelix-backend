@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>User List</h2>
+<table>
+  <tr>
+    <th>ID</th><th>Username</th><th>Email</th><th>Staff</th><th>Actions</th>
+  </tr>
+  {% for user in users %}
+  <tr>
+    <td>{{ user.id }}</td>
+    <td>{{ user.username }}</td>
+    <td>{{ user.email }}</td>
+    <td>{{ user.is_staff }}</td>
+    <td><a href="{% url 'user-edit' user.id %}">Edit</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<a href="{% url 'support-dashboard' %}">Back to Dashboard</a>
+{% endblock %}

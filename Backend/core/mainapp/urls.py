@@ -5,6 +5,15 @@ from . import views
 from django.contrib.auth.views import LogoutView
 from rest_framework.routers import DefaultRouter
 from .views import chat_history_list
+from .support_dashboard_views import (
+    support_dashboard,
+    user_list,
+    user_edit,
+    credits_adjust,
+    referral_code_list,
+    referral_code_create,
+    referral_code_update,
+)
 
 router = DefaultRouter()
 router.register(r'relations', views.RelationViewSet, basename='relation-api')
@@ -49,4 +58,13 @@ urlpatterns = [
     path('api/chat/gemini/stream/', views.GeminiChatStreamView.as_view(), name='api-gemini-chat-stream'),
 
     path('chat-history/', chat_history_list, name='chat-history-list'),
+
+    # Support Dashboard URLs
+    path('support-dashboard/', support_dashboard, name='support-dashboard'),
+    path('support-dashboard/users/', user_list, name='user-list'),
+    path('support-dashboard/users/<int:user_id>/edit/', user_edit, name='user-edit'),
+    path('support-dashboard/credits/', credits_adjust, name='credits-adjust'),
+    path('support-dashboard/referral-codes/', referral_code_list, name='referral-code-list'),
+    path('support-dashboard/referral-codes/create/', referral_code_create, name='referral-code-create'),
+    path('support-dashboard/referral-codes/<int:code_id>/edit/', referral_code_update, name='referral-code-update'),
 ]

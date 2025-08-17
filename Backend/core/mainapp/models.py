@@ -7,7 +7,20 @@ from django.contrib.auth.models import AbstractUser
 # User Model
 # -------------------------------
 class CustomUser(AbstractUser):
-    # You can add additional fields here if needed in the future
+    @property
+    def age(self):
+        from datetime import date
+        if self.date_of_birth:
+            today = date.today()
+            return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+        return None
+    GENDER_CHOICES = (
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    )
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
     emocoins = models.PositiveIntegerField(default=0, help_text="Emocoins earned through activities.")
     def __str__(self):
         return self.username
@@ -159,4 +172,15 @@ class ReferralProgram(models.Model):
     referred_user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="referred_by")
     referral_token = models.CharField(max_length=20, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
+class ReferralCode(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    credits = models.PositiveIntegerField(default=0, help_text="Credits granted by this code.")
+    max_redemptions = models.PositiveIntegerField(default=1, help_text="Maximum times this code can be redeemed.")
+    redeemed_count = models.PositiveIntegerField(default=0, help_text="Number of times this code has been redeemed.")
+    active = models.BooleanField(default=True, help_text="Is this code active?")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.code} ({self.credits} credits)"

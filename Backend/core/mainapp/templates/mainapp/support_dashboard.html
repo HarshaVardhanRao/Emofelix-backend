@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Support Dashboard</h1>
+<ul>
+  <li><a href="{% url 'user-list' %}">User Management</a></li>
+  <li><a href="{% url 'credits-adjust' %}">Credits Management</a></li>
+  <li><a href="{% url 'referral-code-list' %}">Referral Code Management</a></li>
+</ul>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Referral Codes</h2>
+<table>
+  <tr>
+    <th>Code</th><th>Credits</th><th>Max Redemptions</th><th>Redeemed</th><th>Active</th><th>Actions</th>
+  </tr>
+  {% for code in codes %}
+  <tr>
+    <td>{{ code.code }}</td>
+    <td>{{ code.credits }}</td>
+    <td>{{ code.max_redemptions }}</td>
+    <td>{{ code.redeemed_count }}</td>
+    <td>{{ code.active }}</td>
+    <td><a href="{% url 'referral-code-update' code.id %}">Edit</a></td>
+  </tr>
+  {% endfor %}
+</table>
+<a href="{% url 'referral-code-create' %}">Create New Code</a>
+<a href="{% url 'support-dashboard' %}">Back to Dashboard</a>
+{% endblock %}
