@@ -49,6 +49,7 @@ class Character(models.Model):
     voice_model = models.CharField(max_length=100)
     nickname = models.CharField(max_length=100, help_text="What the character usually calls the user.", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    streak = models.PositiveIntegerField(default=0, help_text="Time spent communicating with this character (in minutes)")
 
     class Meta:
         ordering = ['created_at']
@@ -161,7 +162,7 @@ class Membership(models.Model):
     plan = models.CharField(max_length=10, choices=PLAN_CHOICES)
     start_date = models.DateField(auto_now_add=True)
     expiry_date = models.DateField(null=True, blank=True)
-    credits = models.PositiveIntegerField(default=5, help_text="Credits used to unlock characters. Each character costs 5 credits.")
+    credits = models.PositiveIntegerField(default=15, help_text="Credits used to unlock characters. Each character costs 5 credits.")
 
 
 # -------------------------------

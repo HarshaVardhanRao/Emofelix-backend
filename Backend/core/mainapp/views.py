@@ -86,8 +86,8 @@ def send_otp_email(email, purpose="registration"):
     otp = str(random.randint(100000, 999999)) 
     
     if purpose == "registration":
-        subject = "Email Verification OTP"
-        message = f"Your OTP for email verification is: {otp}\nThis OTP will expire in 10 minutes."
+        subject = "Your EmoFelix OTP – A Gentle Step to Get You Started"
+        message = f"Hello Friend 💙,\nYour one-time password (OTP) for email verification is: {otp} \nThis OTP will stay valid for the next 10 minutes. Please enter it soon to continue your journey with EmoFelix.\nAt EmoFelix, we’re here to be your safe space — caring, supportive, and always by your side. \nWith warmth,\nThe EmoFelix Team"
     elif purpose == "password_reset":
         subject = "Password Reset OTP - EmoFelix"
         message = f"Hello,\n\nWe received a request to reset your password for your EmoFelix account.\n\nYour password reset OTP is: {otp}\n\nThis OTP will expire in 10 minutes. If you didn't request this password reset, please ignore this email.\n\nBest regards,\nThe EmoFelix Team"
