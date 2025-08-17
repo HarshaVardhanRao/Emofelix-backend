@@ -185,3 +185,105 @@ class ReferralCode(models.Model):
 
     def __str__(self):
         return f"{self.code} ({self.credits} credits)"
+
+
+# -------------------------------
+# Tasks and Rewards System
+# -------------------------------
+class Task(models.Model):
+    TASK_TYPES = [
+        ('REVIEW', 'App Review'),
+        ('REFERRAL', 'Referral'),
+        ('DAILY_LOGIN', 'Daily Login'),
+        ('FIRST_CALL', 'First Call'),
+        ('COMPLETE_PROFILE', 'Complete Profile'),
+        ('SOCIAL_SHARE', 'Social Share'),
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    task_type = models.CharField(max_length=20, choices=TASK_TYPES)
+    reward_emocoins = models.PositiveIntegerField(default=5)
+    is_active = models.BooleanField(default=True)
+    max_completions_per_user = models.PositiveIntegerField(default=1, help_text="How many times a user can complete this task")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.title} - {self.reward_emocoins} emocoins"
+
+
+class UserTask(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="completed_tasks")
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    completed_at = models.DateTimeField(auto_now_add=True)
+    reward_claimed = models.BooleanField(default=True)
+    
+    class Meta:
+        unique_together = ['user', 'task']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.task.title}"
+
+
+class AppReview(models.Model):
+    RATING_CHOICES = [
+        (1, '1 Star'),
+        (2, '2 Stars'),
+        (3, '3 Stars'),
+        (4, '4 Stars'),
+        (5, '5 Stars'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="app_reviews")
+    rating = models.IntegerField(choices=RATING_CHOICES)
+    
+    # Review questions and answers
+    what_you_like = models.TextField(help_text="What do you like most about the app?", blank=True)
+    what_to_improve = models.TextField(help_text="What could be improved?", blank=True)
+    recommend_to_others = models.BooleanField(help_text="Would you recommend this app to others?")
+    favorite_feature = models.CharField(max_length=200, help_text="What's your favorite feature?", blank=True)
+    additional_feedback = models.TextField(help_text="Any additional feedback?", blank=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    reward_given = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"Review by {self.user.username} - {self.rating} stars"
+
+
+# -------------------------------
+# Enhanced Referral System
+# -------------------------------
+class UserReferral(models.Model):
+    """Enhanced referral tracking system"""
+    referrer = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sent_referrals")
+    referred_user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="received_referral")
+    referral_code = models.CharField(max_length=20, unique=True, help_text="Unique referral code generated for sharing")
+    
+    # Tracking
+    created_at = models.DateTimeField(auto_now_add=True)
+    referral_used_at = models.DateTimeField(auto_now_add=True)
+    
+    # Rewards
+    referrer_reward_given = models.BooleanField(default=False)
+    referred_reward_given = models.BooleanField(default=False)
+    referrer_reward_emocoins = models.PositiveIntegerField(default=10)
+    referred_reward_emocoins = models.PositiveIntegerField(default=5)
+    
+    def __str__(self):
+        return f"{self.referrer.username} referred {self.referred_user.username}"
+
+
+class ReferralCodeRedemption(models.Model):
+    """Track referral code redemptions"""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    referral_code = models.ForeignKey(ReferralCode, on_delete=models.CASCADE)
+    redeemed_at = models.DateTimeField(auto_now_add=True)
+    credits_received = models.PositiveIntegerField()
+    
+    class Meta:
+        unique_together = ['user', 'referral_code']
+    
+    def __str__(self):
+        return f"{self.user.username} redeemed {self.referral_code.code}"

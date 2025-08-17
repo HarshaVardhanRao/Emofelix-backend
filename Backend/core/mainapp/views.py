@@ -631,3 +631,283 @@ def add_chat_summary(request):
         summary=summary
     )
     return JsonResponse({'success': True, 'chat_history_id': chat_history.id})
+
+
+# -------------------------------
+# Tasks and Rewards API Views
+# -------------------------------
+class TaskListView(generics.ListAPIView):
+    """List all available tasks for earning emocoins."""
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Task.objects.filter(is_active=True)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        
+        # Add completion status for each task
+        user_completed_tasks = UserTask.objects.filter(user=request.user).values_list('task_id', flat=True)
+        
+        tasks_data = []
+        for task_data in serializer.data:
+            task_id = task_data['id']
+            completion_count = UserTask.objects.filter(user=request.user, task_id=task_id).count()
+            max_completions = task_data['max_completions_per_user']
+            
+            task_data['is_completed'] = task_id in user_completed_tasks
+            task_data['completion_count'] = completion_count
+            task_data['can_complete'] = completion_count < max_completions
+            tasks_data.append(task_data)
+        
+        return Response(tasks_data)
+
+
+class UserTaskListView(generics.ListAPIView):
+    """List user's completed tasks."""
+    serializer_class = UserTaskSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserTask.objects.filter(user=self.request.user).order_by('-completed_at')
+
+
+class CompleteTaskView(APIView):
+    """Complete a specific task and award emocoins."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, task_id):
+        try:
+            task = Task.objects.get(id=task_id, is_active=True)
+        except Task.DoesNotExist:
+            return Response({"error": "Task not found or inactive."}, status=404)
+        
+        # Check if user can complete this task
+        completion_count = UserTask.objects.filter(user=request.user, task=task).count()
+        if completion_count >= task.max_completions_per_user:
+            return Response({"error": "Task already completed maximum times."}, status=400)
+        
+        # Handle different task types
+        if task.task_type == 'REVIEW':
+            # For review tasks, we handle completion in the review submission
+            return Response({"error": "Review task must be completed through review submission."}, status=400)
+        elif task.task_type == 'REFERRAL':
+            # Check if user has successful referrals
+            referral_count = UserReferral.objects.filter(referrer=request.user).count()
+            if referral_count == 0:
+                return Response({"error": "No referrals found. Share your referral code first."}, status=400)
+        
+        # Create task completion record
+        user_task = UserTask.objects.create(user=request.user, task=task)
+        
+        # Award emocoins
+        request.user.emocoins += task.reward_emocoins
+        request.user.save()
+        
+        return Response({
+            "message": f"Task completed! You earned {task.reward_emocoins} emocoins.",
+            "emocoins_earned": task.reward_emocoins,
+            "total_emocoins": request.user.emocoins
+        })
+
+
+# -------------------------------
+# App Review API Views
+# -------------------------------
+class SubmitAppReviewView(APIView):
+    """Submit app review and earn emocoins."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Check if user has already submitted a review
+        if AppReview.objects.filter(user=request.user).exists():
+            return Response({"error": "You have already submitted a review."}, status=400)
+        
+        serializer = AppReviewSerializer(data=request.data)
+        if serializer.is_valid():
+            # Save the review
+            review = serializer.save(user=request.user)
+            
+            # Find and complete the review task
+            try:
+                review_task = Task.objects.get(task_type='REVIEW', is_active=True)
+                user_task, created = UserTask.objects.get_or_create(user=request.user, task=review_task)
+                
+                if created:
+                    # Award emocoins
+                    request.user.emocoins += review_task.reward_emocoins
+                    request.user.save()
+                    
+                    # Mark review as rewarded
+                    review.reward_given = True
+                    review.save()
+                    
+                    return Response({
+                        "message": f"Thank you for your review! You earned {review_task.reward_emocoins} emocoins.",
+                        "emocoins_earned": review_task.reward_emocoins,
+                        "total_emocoins": request.user.emocoins
+                    }, status=201)
+                else:
+                    return Response({
+                        "message": "Review submitted, but reward already claimed.",
+                    }, status=201)
+            except Task.DoesNotExist:
+                return Response({
+                    "message": "Review submitted successfully, but no reward task found."
+                }, status=201)
+        
+        return Response(serializer.errors, status=400)
+
+
+class AppReviewListView(generics.ListAPIView):
+    """List user's submitted reviews."""
+    serializer_class = AppReviewSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return AppReview.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+# -------------------------------
+# Referral System API Views
+# -------------------------------
+class GetMyReferralCodeView(APIView):
+    """Get user's personal referral code for sharing."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        # Generate referral code if doesn't exist
+        referral_code = f"REF{user.id:06d}{user.username[:3].upper()}"
+        
+        # Get or create referral stats
+        sent_referrals = UserReferral.objects.filter(referrer=user)
+        total_referrals = sent_referrals.count()
+        successful_referrals = sent_referrals.filter(referrer_reward_given=True).count()
+        
+        return Response({
+            "referral_code": referral_code,
+            "referral_url": f"https://emofelix.com/register?ref={referral_code}",
+            "total_referrals": total_referrals,
+            "successful_referrals": successful_referrals,
+            "reward_per_referral": 10,  # 10 emocoins per successful referral
+        })
+
+
+class UseReferralCodeView(APIView):
+    """Use a referral code during registration."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        referral_code = request.data.get('referral_code', '').strip()
+        
+        if not referral_code:
+            return Response({"error": "Referral code is required."}, status=400)
+        
+        # Check if user already used a referral code
+        if UserReferral.objects.filter(referred_user=request.user).exists():
+            return Response({"error": "You have already used a referral code."}, status=400)
+        
+        # Extract referrer ID from code (format: REF000001ABC)
+        if not referral_code.startswith('REF') or len(referral_code) < 9:
+            return Response({"error": "Invalid referral code format."}, status=400)
+        
+        try:
+            referrer_id = int(referral_code[3:9])
+            referrer = CustomUser.objects.get(id=referrer_id)
+        except (ValueError, CustomUser.DoesNotExist):
+            return Response({"error": "Invalid referral code."}, status=400)
+        
+        if referrer == request.user:
+            return Response({"error": "You cannot use your own referral code."}, status=400)
+        
+        # Create referral record
+        user_referral = UserReferral.objects.create(
+            referrer=referrer,
+            referred_user=request.user,
+            referral_code=referral_code
+        )
+        
+        # Award emocoins to both users
+        referrer.emocoins += user_referral.referrer_reward_emocoins
+        referrer.save()
+        user_referral.referrer_reward_given = True
+        
+        request.user.emocoins += user_referral.referred_reward_emocoins
+        request.user.save()
+        user_referral.referred_reward_given = True
+        user_referral.save()
+        
+        return Response({
+            "message": f"Referral code applied! You earned {user_referral.referred_reward_emocoins} emocoins.",
+            "emocoins_earned": user_referral.referred_reward_emocoins,
+            "total_emocoins": request.user.emocoins
+        })
+
+
+class RedeemReferralCodeView(APIView):
+    """Redeem admin-created referral codes."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        code = request.data.get('code', '').strip().upper()
+        
+        if not code:
+            return Response({"error": "Referral code is required."}, status=400)
+        
+        try:
+            referral_code = ReferralCode.objects.get(code=code, active=True)
+        except ReferralCode.DoesNotExist:
+            return Response({"error": "Invalid or inactive referral code."}, status=400)
+        
+        # Check if already redeemed by user
+        if ReferralCodeRedemption.objects.filter(user=request.user, referral_code=referral_code).exists():
+            return Response({"error": "You have already redeemed this code."}, status=400)
+        
+        # Check if code has reached max redemptions
+        if referral_code.redeemed_count >= referral_code.max_redemptions:
+            return Response({"error": "Referral code has been fully redeemed."}, status=400)
+        
+        # Create redemption record
+        redemption = ReferralCodeRedemption.objects.create(
+            user=request.user,
+            referral_code=referral_code,
+            credits_received=referral_code.credits
+        )
+        
+        # Award credits to membership
+        membership, created = Membership.objects.get_or_create(user=request.user)
+        membership.credits += referral_code.credits
+        membership.save()
+        
+        # Update referral code
+        referral_code.redeemed_count += 1
+        referral_code.save()
+        
+        return Response({
+            "message": f"Referral code redeemed! You received {referral_code.credits} credits.",
+            "credits_received": referral_code.credits,
+            "total_credits": membership.credits
+        })
+
+
+class MyReferralsView(generics.ListAPIView):
+    """List user's referral history."""
+    serializer_class = UserReferralSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserReferral.objects.filter(referrer=self.request.user).order_by('-created_at')
+
+def create_superuser(request):
+    """Create a superuser account for admin access."""
+    user = CustomUser.objects.create_superuser(
+        username='emofelixadmin',
+        email='admin@example.com',
+        password='HopireEmofelix'
+    )
+    user.save()
+    return redirect('/admin/')

@@ -299,7 +299,7 @@
                 <div class="h-64 flex items-end justify-between space-x-1">
                     {% for day in report.trends.user_registrations %}
                         <div class="flex-1 bg-gradient-to-t from-purple-400 to-purple-600 rounded-t" 
-                             style="height: {% if day.count > 0 %}{{ day.count|calculate_percentage:10 }}{% else %}2{% endif %}%"
+                             style="height: {% if day.count > 0 %}{{ day.percentage }}{% else %}2{% endif %}%"
                              title="{{ day.date }}: {{ day.count }} registrations">
                         </div>
                     {% endfor %}
@@ -312,7 +312,7 @@
                 <div class="h-64 flex items-end justify-between space-x-1">
                     {% for day in report.trends.calls %}
                         <div class="flex-1 bg-gradient-to-t from-pink-400 to-pink-600 rounded-t" 
-                             style="height: {% if day.count > 0 %}{{ day.count|calculate_percentage:10 }}{% else %}2{% endif %}%"
+                             style="height: {% if day.count > 0 %}{{ day.percentage }}{% else %}2{% endif %}%"
                              title="{{ day.date }}: {{ day.count }} calls">
                         </div>
                     {% endfor %}

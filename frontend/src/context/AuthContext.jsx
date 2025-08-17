@@ -138,6 +138,27 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateUser = (updates) => {
+        setUser(prevUser => ({
+            ...prevUser,
+            ...updates
+        }));
+    };
+
+    const refreshUser = async () => {
+        if (token) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/profile/`);
+                setUser(response.data);
+                return response.data;
+            } catch (error) {
+                console.error('Failed to refresh user data:', error);
+                return null;
+            }
+        }
+        return null;
+    };
+
     const value = {
         user,
         token,
@@ -146,6 +167,8 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         googleLogin,
+        updateUser,
+        refreshUser,
         isAuthenticated: !!user,
     };
 

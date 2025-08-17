@@ -1,13 +1,15 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.db.models import Q, Sum, Count, Avg
+from django.db import models
 from django.utils import timezone
 from django.http import HttpResponse, JsonResponse
 from datetime import timedelta
 import csv
 import json
-from .models import CustomUser, Membership, ReferralCode, Character, Call, CallHistory
+from .models import CustomUser, Membership, ReferralCode, Character, Call, CallHistory, Task, UserTask, AppReview, UserReferral
 from .forms import StaffUserEditForm, CreditsAdjustForm, ReferralCodeForm, ReferralCodeUpdateForm
 
 @user_passes_test(lambda u: u.is_staff)
@@ -256,6 +258,7 @@ def generate_analytics_report(request):
     
     # User engagement trends (last 30 days)
     user_registrations_trend = []
+    max_registrations = 1  # minimum to avoid division by zero
     for i in range(30):
         date = today - timedelta(days=i)
         count = CustomUser.objects.filter(date_joined__date=date).count()
@@ -263,10 +266,17 @@ def generate_analytics_report(request):
             'date': date.isoformat(),
             'count': count
         })
+        if count > max_registrations:
+            max_registrations = count
     user_registrations_trend.reverse()
+    
+    # Add percentage calculations for chart display
+    for day in user_registrations_trend:
+        day['percentage'] = (day['count'] / max_registrations * 100) if max_registrations > 0 else 0
     
     # Calls trend (last 30 days)
     calls_trend = []
+    max_calls = 1  # minimum to avoid division by zero
     for i in range(30):
         date = today - timedelta(days=i)
         count = Call.objects.filter(timestamp__date=date).count()
@@ -274,7 +284,13 @@ def generate_analytics_report(request):
             'date': date.isoformat(),
             'count': count
         })
+        if count > max_calls:
+            max_calls = count
     calls_trend.reverse()
+    
+    # Add percentage calculations for chart display
+    for day in calls_trend:
+        day['percentage'] = (day['count'] / max_calls * 100) if max_calls > 0 else 0
     
     report_data = {
         'generated_at': timezone.now().isoformat(),
@@ -328,3 +344,143 @@ def generate_analytics_report(request):
         return render(request, 'mainapp/analytics_report.html', {
             'report': report_data
         })
+
+
+# Task Management Views
+@login_required
+@staff_member_required
+def support_dashboard_tasks(request):
+    """Display all tasks with completion statistics"""
+    tasks = Task.objects.all().order_by('id')
+    
+    # Add completion statistics to each task
+    task_stats = []
+    for task in tasks:
+        user_tasks = UserTask.objects.filter(task=task)
+        completed_count = user_tasks.count()  # All UserTask records represent completions
+        total_attempts = completed_count  # Same as completed count since we only create records on completion
+        
+        task_stats.append({
+            'task': task,
+            'completed_count': completed_count,
+            'total_attempts': total_attempts,
+            'completion_rate': 100 if total_attempts > 0 else 0  # 100% since all records are completions
+        })
+    
+    context = {
+        'task_stats': task_stats,
+        'total_tasks': tasks.count(),
+        'active_tasks': tasks.filter(is_active=True).count()
+    }
+    
+    return render(request, 'mainapp/support_dashboard_tasks.html', context)
+
+
+@login_required
+@staff_member_required
+def support_dashboard_task_detail(request, task_id):
+    """View detailed information about a specific task"""
+    task = get_object_or_404(Task, id=task_id)
+    user_tasks = UserTask.objects.filter(task=task).select_related('user').order_by('-completed_at')
+    
+    # Statistics
+    completed_count = user_tasks.count()  # All UserTask records represent completions
+    total_attempts = completed_count  # Same as completed count
+    completion_rate = 100 if total_attempts > 0 else 0  # 100% since all records are completions
+    
+    # Recent completions
+    recent_completions = user_tasks.order_by('-completed_at')[:10]
+    
+    # Calculate total rewards given
+    total_rewards = completed_count * task.reward_emocoins
+    
+    context = {
+        'task': task,
+        'user_tasks': user_tasks[:20],  # Latest 20 attempts
+        'completed_count': completed_count,
+        'total_attempts': total_attempts,
+        'completion_rate': completion_rate,
+        'total_rewards': total_rewards,
+        'recent_completions': recent_completions
+    }
+    
+    return render(request, 'mainapp/support_dashboard_task_detail.html', context)
+
+
+@login_required
+@staff_member_required
+def support_dashboard_app_reviews(request):
+    """Display all app reviews"""
+    reviews = AppReview.objects.select_related('user').order_by('-created_at')
+    
+    # Statistics
+    total_reviews = reviews.count()
+    avg_rating = reviews.aggregate(avg_rating=models.Avg('rating'))['avg_rating'] or 0
+    rating_distribution = {}
+    
+    for i in range(1, 6):
+        count = reviews.filter(rating=i).count()
+        percentage = (count * 100 / total_reviews) if total_reviews > 0 else 0
+        rating_distribution[i] = {
+            'count': count,
+            'percentage': percentage
+        }
+    
+    context = {
+        'reviews': reviews[:50],  # Latest 50 reviews
+        'total_reviews': total_reviews,
+        'avg_rating': round(avg_rating, 1),
+        'rating_distribution': rating_distribution
+    }
+    
+    return render(request, 'mainapp/support_dashboard_app_reviews.html', context)
+
+
+@login_required
+@staff_member_required
+def support_dashboard_user_referrals(request):
+    """Display user referral statistics"""
+    # Get all user referrals
+    referrals = UserReferral.objects.select_related('referrer', 'referred_user').order_by('-created_at')
+    
+    # Statistics
+    total_referrals = referrals.count()
+    successful_referrals = referrals.filter(referred_user__isnull=False).count()  # All referrals with referred users
+    
+    # Count unique referrers (users who have referred others)
+    unique_referrers = referrals.values('referrer').distinct().count()
+    
+    # Get top referrers by counting how many people they've referred
+    from django.db.models import Count
+    top_referrers = (referrals
+                    .values('referrer__id', 'referrer__username')
+                    .annotate(referral_count=Count('referred_user'))
+                    .order_by('-referral_count')[:10])
+    
+    # Calculate success rate (all referrals are successful since they have referred_user)
+    success_rate = 100.0 if total_referrals > 0 else 0
+    
+    context = {
+        'referrals': referrals[:50],  # Latest 50 referrals
+        'total_referrals': total_referrals,
+        'successful_referrals': successful_referrals,
+        'unique_referrers': unique_referrers,
+        'success_rate': success_rate,
+        'top_referrers': top_referrers
+    }
+    
+    return render(request, 'mainapp/support_dashboard_user_referrals.html', context)
+
+
+@login_required
+@staff_member_required
+def support_dashboard_task_toggle(request, task_id):
+    """Toggle task active status"""
+    if request.method == 'POST':
+        task = get_object_or_404(Task, id=task_id)
+        task.is_active = not task.is_active
+        task.save()
+        
+        messages.success(request, f'Task "{task.title}" {"activated" if task.is_active else "deactivated"}')
+    
+    return redirect('support-dashboard-tasks')

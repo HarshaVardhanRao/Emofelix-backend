@@ -95,6 +95,15 @@ const Navbar = () => {
                                     <span className="font-semibold">💕 My Loved Ones</span>
                                 </Link>
 
+                                {/* Tasks Link */}
+                                <Link
+                                    to="/tasks"
+                                    className="flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/30 to-blue-500/30 text-white border-2 border-purple-400/30 hover:from-purple-500/50 hover:to-blue-500/50 hover:border-purple-400/60 transition-all duration-300 backdrop-blur-sm"
+                                >
+                                    <Sparkles className="h-5 w-5 text-purple-300" />
+                                    <span className="font-semibold">🎯 Tasks</span>
+                                </Link>
+
                                 {/* Emocoins Display */}
                                 <div className="flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-white border border-yellow-400/30 backdrop-blur-sm">
                                     <span className="text-xl">💰</span>
@@ -166,6 +175,16 @@ const Navbar = () => {
                                     >
                                         <MessageCircle className="h-6 w-6 text-love-300" />
                                         <span className="font-semibold text-lg">💕 My Loved Ones</span>
+                                    </Link>
+
+                                    {/* Tasks Link - Mobile */}
+                                    <Link
+                                        to="/tasks"
+                                        className="flex items-center space-x-3 px-6 py-4 rounded-2xl bg-gradient-to-r from-purple-500/30 to-blue-500/30 text-white border-2 border-purple-400/30 hover:from-purple-500/50 hover:to-blue-500/50 transition-all duration-300"
+                                        onClick={() => setIsMenuOpen(false)}
+                                    >
+                                        <Sparkles className="h-6 w-6 text-purple-300" />
+                                        <span className="font-semibold text-lg">🎯 Tasks</span>
                                     </Link>
 
                                     {/* Emocoins Display - Mobile */}

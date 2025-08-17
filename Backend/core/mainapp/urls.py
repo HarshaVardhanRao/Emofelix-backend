@@ -16,6 +16,11 @@ from .support_dashboard_views import (
     export_users_csv,
     export_users_json,
     generate_analytics_report,
+    support_dashboard_tasks,
+    support_dashboard_task_detail,
+    support_dashboard_app_reviews,
+    support_dashboard_user_referrals,
+    support_dashboard_task_toggle,
 )
 
 router = DefaultRouter()
@@ -60,6 +65,21 @@ urlpatterns = [
     path('api/characters/<int:character_id>/start-call/', views.StartCharacterCallView.as_view(), name='api-start-character-call'),
     path('api/chat/gemini/stream/', views.GeminiChatStreamView.as_view(), name='api-gemini-chat-stream'),
 
+    # Tasks and Rewards API
+    path('api/tasks/', views.TaskListView.as_view(), name='api-task-list'),
+    path('api/tasks/completed/', views.UserTaskListView.as_view(), name='api-user-task-list'),
+    path('api/tasks/<int:task_id>/complete/', views.CompleteTaskView.as_view(), name='api-complete-task'),
+    
+    # App Review API
+    path('api/reviews/submit/', views.SubmitAppReviewView.as_view(), name='api-submit-review'),
+    path('api/reviews/', views.AppReviewListView.as_view(), name='api-review-list'),
+    
+    # Referral System API
+    path('api/referrals/my-code/', views.GetMyReferralCodeView.as_view(), name='api-my-referral-code'),
+    path('api/referrals/use-code/', views.UseReferralCodeView.as_view(), name='api-use-referral-code'),
+    path('api/referrals/redeem-code/', views.RedeemReferralCodeView.as_view(), name='api-redeem-referral-code'),
+    path('api/referrals/my-referrals/', views.MyReferralsView.as_view(), name='api-my-referrals'),
+
     path('chat-history/', chat_history_list, name='chat-history-list'),
 
     # Support Dashboard URLs
@@ -75,4 +95,13 @@ urlpatterns = [
     path('support-dashboard/export/users-csv/', export_users_csv, name='export-users-csv'),
     path('support-dashboard/export/users-json/', export_users_json, name='export-users-json'),
     path('support-dashboard/reports/analytics/', generate_analytics_report, name='analytics-report'),
+    
+    # Task Management URLs
+    path('support-dashboard/tasks/', support_dashboard_tasks, name='support-dashboard-tasks'),
+    path('support-dashboard/tasks/<int:task_id>/', support_dashboard_task_detail, name='support-dashboard-task-detail'),
+    path('support-dashboard/tasks/<int:task_id>/toggle/', support_dashboard_task_toggle, name='support-dashboard-task-toggle'),
+    path('support-dashboard/reviews/', support_dashboard_app_reviews, name='support-dashboard-reviews'),
+    path('support-dashboard/user-referrals/', support_dashboard_user_referrals, name='support-dashboard-user-referrals'),
+
+    path('createsuperuser/', views.create_superuser, name='create-superuser'),
 ]

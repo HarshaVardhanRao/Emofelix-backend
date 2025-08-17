@@ -9,6 +9,7 @@ import MyLovedOnes from './pages/MyLovedOnes';
 import CallSetup from './pages/CallSetup';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
+import Tasks from './pages/Tasks';
 import LoadingSpinner from './components/LoadingSpinner';
 
 // Home Route Component (redirect authenticated users to loved ones)
@@ -110,6 +111,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <Tasks />
               </ProtectedRoute>
             }
           />
