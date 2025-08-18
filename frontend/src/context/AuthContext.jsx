@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
                 password,
             });
 
-            const { token: authToken, user_id } = response.data;
+            const { token: authToken } = response.data;
             setToken(authToken);
             localStorage.setItem('token', authToken);
 
@@ -61,6 +61,17 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (error) {
             console.error('Login failed:', error);
+            
+            // Handle terms acceptance requirement
+            if (error.response?.status === 403 && error.response?.data?.requires_terms_acceptance) {
+                return {
+                    success: false,
+                    error: error.response.data.error,
+                    user_id: error.response.data.user_id,
+                    requires_terms_acceptance: true
+                };
+            }
+            
             return {
                 success: false,
                 error: error.response?.data?.detail || 'Login failed'
@@ -123,9 +134,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const googleLogin = async (idToken) => {
+    const googleLogin = async (idToken, termsAccepted = false) => {
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/auth/google-login/`, { id_token: idToken });
+            const response = await axios.post(`${API_BASE_URL}/api/auth/google-login/`, { 
+                id_token: idToken,
+                terms_accepted: termsAccepted
+            });
             const { token: authToken } = response.data;
             setToken(authToken);
             localStorage.setItem('token', authToken);
@@ -134,6 +148,17 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (error) {
             console.error('Google login failed:', error);
+            
+            // Handle terms acceptance requirement for Google login
+            if (error.response?.status === 403 && error.response?.data?.requires_terms_acceptance) {
+                return {
+                    success: false,
+                    error: error.response.data.error,
+                    user_id: error.response.data.user_id,
+                    requires_terms_acceptance: true
+                };
+            }
+            
             return { success: false, error: error.response?.data?.error || 'Google login failed' };
         }
     };

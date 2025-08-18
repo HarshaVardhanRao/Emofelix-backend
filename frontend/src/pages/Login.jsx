@@ -1,7 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles, Heart } from 'lucide-react';
+import TermsAndConditionsModal from '../components/TermsAndConditionsModal';
+import { API_BASE_URL } from '../apiBase';
+import axios from 'axios';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -11,6 +14,9 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
+    const [termsLoading, setTermsLoading] = useState(false);
+    const [pendingUserId, setPendingUserId] = useState(null);
 
     const { login, googleLogin } = useAuth();
     const googleBtnRenderedRef = useRef(false);
@@ -37,7 +43,18 @@ const Login = () => {
             if (result.success) {
                 navigate('/dashboard');
             } else {
-                setError(result.error);
+                // Check if error is due to terms acceptance requirement
+                if (result.error && result.error.includes('Terms and Conditions')) {
+                    // If login failed due to terms, get the user ID and show terms modal
+                    if (result.user_id) {
+                        setPendingUserId(result.user_id);
+                        setShowTermsModal(true);
+                    } else {
+                        setError(result.error);
+                    }
+                } else {
+                    setError(result.error);
+                }
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -45,6 +62,36 @@ const Login = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleAcceptTermsForLogin = async () => {
+        if (!pendingUserId) return;
+        
+        setTermsLoading(true);
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/accept-terms-login/`, {
+                user_id: pendingUserId,
+                terms_accepted: true
+            });
+            
+            if (response.data.token) {
+                // Store the token and login
+                localStorage.setItem('token', response.data.token);
+                setShowTermsModal(false);
+                window.location.reload(); // Refresh to complete login
+            }
+        } catch (error) {
+            console.error('Error accepting terms during login:', error);
+            setError('Error accepting terms. Please try again.');
+        } finally {
+            setTermsLoading(false);
+        }
+    };
+
+    const handleTermsModalClose = () => {
+        setShowTermsModal(false);
+        setPendingUserId(null);
+        setError('You must accept the Terms and Conditions to continue');
     };
 
     const loadGoogleScript = () => {
@@ -69,7 +116,7 @@ const Login = () => {
         });
     };
 
-    const initGoogle = async () => {
+    const initGoogle = useCallback(async () => {
         if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
             console.warn('VITE_GOOGLE_CLIENT_ID not set');
             return;
@@ -99,14 +146,14 @@ const Login = () => {
             console.error('Google init error', e);
             setError('Google init failed');
         }
-    };
+    }, [googleLogin, navigate]);
 
     useEffect(() => {
         loadGoogleScript().then(initGoogle).catch(err => {
             console.error('Google script load failed', err);
             setError('Failed to load Google services');
         });
-    }, []);
+    }, [initGoogle]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-violet-800 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -308,6 +355,14 @@ const Login = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Terms and Conditions Modal for Login */}
+            <TermsAndConditionsModal
+                isOpen={showTermsModal}
+                onClose={handleTermsModalClose}
+                onAccept={handleAcceptTermsForLogin}
+                isLoading={termsLoading}
+            />
         </div>
     );
 };

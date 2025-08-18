@@ -22,6 +22,11 @@ class CustomUser(AbstractUser):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     emocoins = models.PositiveIntegerField(default=0, help_text="Emocoins earned through activities.")
+    
+    # Terms and Conditions acceptance
+    terms_accepted = models.BooleanField(default=False, help_text="User has accepted the Terms and Conditions")
+    terms_accepted_at = models.DateTimeField(null=True, blank=True, help_text="When user accepted the Terms and Conditions")
+    
     def __str__(self):
         return self.username
 

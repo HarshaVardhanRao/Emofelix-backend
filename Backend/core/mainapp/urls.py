@@ -51,6 +51,8 @@ urlpatterns = [
     path('api/login/', views.ApiLoginView.as_view(), name='api-login'),
     path('api/logout/', views.ApiLogoutView.as_view(), name='api-logout'),
     path('api/auth/google-login/', views.GoogleLoginView.as_view(), name='google-login'),
+    path('api/auth/accept-terms/', views.AcceptTermsView.as_view(), name='accept-terms'),
+    path('api/auth/accept-terms-login/', views.AcceptTermsForLoginView.as_view(), name='accept-terms-login'),
     path('api/forgot-password/', views.ForgotPasswordView.as_view(), name='api-forgot-password'),
     path('api/reset-password/', views.ResetPasswordView.as_view(), name='api-reset-password'),
 

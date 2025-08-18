@@ -5,19 +5,33 @@ from django.contrib.auth import authenticate
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     """Serializer for user registration."""
+    terms_accepted = serializers.BooleanField(write_only=True)
+    
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'password', 'first_name', 'last_name')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'terms_accepted')
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate_terms_accepted(self, value):
+        """Validate that user has accepted terms and conditions."""
+        if not value:
+            raise serializers.ValidationError("You must accept the Terms and Conditions to create an account.")
+        return value
+
     def create(self, validated_data):
+        from django.utils import timezone
+        
+        terms_accepted = validated_data.pop('terms_accepted', False)
+        
         user = CustomUser.objects.create_user(
             username=validated_data['email'], # Use email as username
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
-            emocoins=validated_data.get('emocoins', 15)  # Default to 15 if not provided
+            emocoins=validated_data.get('emocoins', 15),  # Default to 15 if not provided
+            terms_accepted=terms_accepted,
+            terms_accepted_at=timezone.now() if terms_accepted else None
         )
         return user
 
@@ -25,8 +39,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     """Serializer for retrieving and updating user profile."""
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'first_name', 'last_name', 'emocoins')
-        read_only_fields = ('email', 'id') # Don't allow email change via this endpoint
+        fields = ('id', 'email', 'first_name', 'last_name', 'emocoins', 'terms_accepted', 'terms_accepted_at')
+        read_only_fields = ('email', 'id', 'terms_accepted', 'terms_accepted_at') # Don't allow email change via this endpoint
 
 class CharacterSerializer(serializers.ModelSerializer):
     """Serializer for Character model."""

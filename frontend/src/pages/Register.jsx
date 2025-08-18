@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
 import { API_BASE_URL } from '../apiBase';
+import TermsAndConditionsModal from '../components/TermsAndConditionsModal';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -19,6 +20,8 @@ const Register = () => {
     const [showOtpModal, setShowOtpModal] = useState(false);
     const [otp, setOtp] = useState('');
     const [otpLoading, setOtpLoading] = useState(false);
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     const { register, googleLogin } = useAuth();
     const navigate = useNavigate();
@@ -63,7 +66,12 @@ const Register = () => {
                         setError('No credential received');
                         return;
                     }
-                    const result = await googleLogin(response.credential);
+                    // Check if user has accepted terms before proceeding
+                    if (!termsAccepted) {
+                        setError('You must accept the Terms and Conditions to continue with Google signup');
+                        return;
+                    }
+                    const result = await googleLogin(response.credential, true); // Pass terms acceptance
                     if (result.success) navigate('/dashboard'); else setError(result.error);
                 },
                 ux_mode: 'popup'
@@ -78,7 +86,7 @@ const Register = () => {
             console.error('Google init error', e);
             setError('Google init failed');
         }
-    }, [googleLogin, navigate]);
+    }, [googleLogin, navigate, termsAccepted]);
 
     useEffect(() => {
         loadGoogleScript().then(initGoogle).catch(err => {
@@ -97,6 +105,10 @@ const Register = () => {
     };
 
     const validateForm = () => {
+        if (!termsAccepted) {
+            setError('You must accept the Terms and Conditions to register');
+            return false;
+        }
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
             return false;
@@ -154,6 +166,7 @@ const Register = () => {
                 password: formData.password,
                 first_name: formData.first_name,
                 last_name: formData.last_name,
+                terms_accepted: true, // Include terms acceptance
                 otp: otp,
             });
 
@@ -312,6 +325,27 @@ const Register = () => {
                             </div>
                         </div>
 
+                        {/* Terms and Conditions */}
+                        <div className="flex items-start space-x-3">
+                            <input
+                                id="terms"
+                                type="checkbox"
+                                checked={termsAccepted}
+                                onChange={(e) => setTermsAccepted(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                            />
+                            <label htmlFor="terms" className="text-sm text-gray-700">
+                                I have read and agree to the{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTermsModal(true)}
+                                    className="text-primary-600 hover:text-primary-700 underline"
+                                >
+                                    Terms and Conditions
+                                </button>
+                            </label>
+                        </div>
+
                         {/* Submit Button */}
                         <button
                             type="submit"
@@ -343,6 +377,13 @@ const Register = () => {
                             type="button"
                             onClick={async () => {
                                 setError('');
+                                
+                                // Check if terms are accepted first
+                                if (!termsAccepted) {
+                                    setError('You must accept the Terms and Conditions before signing up with Google');
+                                    return;
+                                }
+                                
                                 if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
                                     setError('Google Client ID missing');
                                     return;
@@ -483,6 +524,16 @@ const Register = () => {
                     </div>
                 </div>
             )}
+
+            {/* Terms and Conditions Modal */}
+            <TermsAndConditionsModal
+                isOpen={showTermsModal}
+                onClose={() => setShowTermsModal(false)}
+                onAccept={() => {
+                    setTermsAccepted(true);
+                    setShowTermsModal(false);
+                }}
+            />
         </div>
     );
 };

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar_new';
+import TermsChecker from './components/TermsChecker';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -54,79 +55,81 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-rose-800">
-      <Navbar />
-      <main className="pt-16">
-        <Routes>
-          <Route path="/" element={<HomeRoute />} />
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/forgot-password"
-            element={
-              <PublicRoute>
-                <ForgotPassword />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/loved-ones"
-            element={
-              <ProtectedRoute>
-                <MyLovedOnes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/call-setup/:relationId"
-            element={
-              <ProtectedRoute>
-                <CallSetup />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/chat/:relationId"
-            element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tasks"
-            element={
-              <ProtectedRoute>
-                <Tasks />
-              </ProtectedRoute>
-            }
-          />
-          {/* Redirect old routes */}
-          <Route path="/dashboard" element={<Navigate to="/loved-ones" replace />} />
-          <Route path="/relations" element={<Navigate to="/loved-ones" replace />} />
-        </Routes>
-      </main>
+      <TermsChecker>
+        <Navbar />
+        <main className="pt-16">
+          <Routes>
+            <Route path="/" element={<HomeRoute />} />
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/loved-ones"
+              element={
+                <ProtectedRoute>
+                  <MyLovedOnes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/call-setup/:relationId"
+              element={
+                <ProtectedRoute>
+                  <CallSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat/:relationId"
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <Tasks />
+                </ProtectedRoute>
+              }
+            />
+            {/* Redirect old routes */}
+            <Route path="/dashboard" element={<Navigate to="/loved-ones" replace />} />
+            <Route path="/relations" element={<Navigate to="/loved-ones" replace />} />
+          </Routes>
+        </main>
+      </TermsChecker>
     </div>
   );
 }

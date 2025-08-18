@@ -226,6 +226,15 @@ class ApiLoginView(ObtainAuthToken):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
+        
+        # Check if user has accepted terms and conditions
+        if not user.terms_accepted:
+            return Response({
+                'error': 'You must accept the current Terms and Conditions to continue',
+                'requires_terms_acceptance': True,
+                'user_id': user.id
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
@@ -245,20 +254,48 @@ class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         google_token = request.data.get('id_token')
+        terms_accepted = request.data.get('terms_accepted', False)
+        
         if not google_token:
             return Response({'error': 'ID token is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
         try:
             idinfo = id_token.verify_oauth2_token(google_token, requests.Request(), settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY)
             email = idinfo['email']
+            
             user, created = CustomUser.objects.get_or_create(
                 email=email,
                 defaults={
                     'username': email,
                     'first_name': idinfo.get('given_name', ''),
                     'last_name': idinfo.get('family_name', ''),
-                    'emocoins': 15  # Default to 5 emocoins
+                    'emocoins': 15  # Default to 15 emocoins
                 }
             )
+            
+            # For new users, check terms acceptance
+            if created and not terms_accepted:
+                # Delete the user that was just created since terms weren't accepted
+                user.delete()
+                return Response({
+                    'error': 'You must accept the Terms and Conditions to create an account'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # For new users who accepted terms, update their acceptance status
+            if created and terms_accepted:
+                from django.utils import timezone
+                user.terms_accepted = True
+                user.terms_accepted_at = timezone.now()
+                user.save()
+            
+            # For existing users, check if they have accepted terms
+            if not created and not user.terms_accepted:
+                return Response({
+                    'error': 'You must accept the current Terms and Conditions to continue',
+                    'requires_terms_acceptance': True,
+                    'user_id': user.id
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             drf_token, _ = Token.objects.get_or_create(user=user)
             return Response({
                 'token': drf_token.key,
@@ -267,6 +304,61 @@ class GoogleLoginView(APIView):
             })
         except ValueError:
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
+
+class AcceptTermsView(APIView):
+    """API Endpoint for existing users to accept terms and conditions."""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        user = request.user
+        terms_accepted = request.data.get('terms_accepted', False)
+        
+        if not terms_accepted:
+            return Response({
+                'error': 'You must accept the Terms and Conditions'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        from django.utils import timezone
+        user.terms_accepted = True
+        user.terms_accepted_at = timezone.now()
+        user.save()
+        
+        return Response({
+            'message': 'Terms and Conditions accepted successfully',
+            'terms_accepted_at': user.terms_accepted_at
+        })
+
+class AcceptTermsForLoginView(APIView):
+    """API Endpoint for users to accept terms and complete login."""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        user_id = request.data.get('user_id')
+        terms_accepted = request.data.get('terms_accepted', False)
+        
+        if not user_id:
+            return Response({'error': 'User ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not terms_accepted:
+            return Response({'error': 'You must accept the Terms and Conditions'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            from django.utils import timezone
+            user.terms_accepted = True
+            user.terms_accepted_at = timezone.now()
+            user.save()
+            
+            # Create or get token for login
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'message': 'Terms accepted successfully. Login completed.',
+                'token': token.key,
+                'user_id': user.pk,
+                'email': user.email
+            })
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class ForgotPasswordView(APIView):
     """Send password reset OTP to user's email."""
