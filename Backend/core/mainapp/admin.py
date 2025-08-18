@@ -5,4 +5,5 @@ from .models import *
 admin.site.register(CustomUser)
 admin.site.register(Character)
 admin.site.register(Relation)
+admin.site.register(Task)
 # If you have other models like Notification, CallHistory, etc., register them here as well
