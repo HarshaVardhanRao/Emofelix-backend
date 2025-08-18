@@ -79,7 +79,8 @@ const Register = () => {
                     const result = await googleLogin(response.credential, true);
                     if (result.success) navigate('/dashboard'); else setError(result.error);
                 },
-                ux_mode: 'popup'
+                auto_select: false,
+                cancel_on_tap_outside: false
             });
             const container = document.getElementById('google_button_container');
             if (container && !googleBtnRenderedRef.current) {

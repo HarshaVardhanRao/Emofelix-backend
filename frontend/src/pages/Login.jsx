@@ -154,6 +154,20 @@ const Login = () => {
                         console.error('Google login error:', error);
                         setError('Google login failed');
                     }
+                },
+                auto_select: false,
+                cancel_on_tap_outside: false
+            });
+
+            // Enable One Tap login for returning users - shows automatically if user is signed in to Google
+            window.google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed()) {
+                    console.log('One Tap not displayed:', notification.getNotDisplayedReason());
+                    // One Tap could not be displayed, this is normal for new users or privacy settings
+                }
+                if (notification.isSkippedMoment()) {
+                    console.log('One Tap skipped:', notification.getSkippedReason());
+                    // User closed One Tap by clicking X or pressing Esc
                 }
             });
 
@@ -305,6 +319,24 @@ const Login = () => {
                         {/* Google Sign In Button */}
                         <div className="flex justify-center">
                             <div id="google-signin-button" className="w-full"></div>
+                        </div>
+
+                        {/* Alternative Google Sign In - Manual trigger */}
+                        <div className="flex justify-center mt-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    // Trigger Google One Tap manually if it didn't show automatically
+                                    if (window.google?.accounts?.id) {
+                                        window.google.accounts.id.prompt();
+                                    } else {
+                                        setError('Google services not ready');
+                                    }
+                                }}
+                                className="text-gray-400 hover:text-white text-sm underline transition-colors"
+                            >
+                                Try Google One Tap Login
+                            </button>
                         </div>
                     </form>
 
