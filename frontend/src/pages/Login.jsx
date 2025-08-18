@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Sparkles, Heart } from 'lucide-react';
@@ -18,9 +18,9 @@ const Login = () => {
     const [termsLoading, setTermsLoading] = useState(false);
     const [pendingUserId, setPendingUserId] = useState(null);
     const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
+    const [googleReady, setGoogleReady] = useState(false);
 
     const { login, googleLogin } = useAuth();
-    const googleBtnRenderedRef = useRef(false);
 
     const navigate = useNavigate();
 
@@ -127,17 +127,21 @@ const Login = () => {
     };
 
     const initGoogle = useCallback(async () => {
+        if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+            console.warn('VITE_GOOGLE_CLIENT_ID not set');
+            return;
+        }
         if (!(window.google && window.google.accounts && window.google.accounts.id)) return;
         try {
             window.google.accounts.id.initialize({
-                client_id: '878349827702-9rpv5jq3m9fg6nmd2hjjc5e6jqrv7a2v.apps.googleusercontent.com',
+                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
                 callback: async (response) => {
                     if (!response.credential) {
                         setError('No credential received');
                         return;
                     }
                     try {
-                        // For login, directly try Google login without forcing terms acceptance
+                        // For login, try Google login directly (no terms check needed for existing users)
                         const result = await googleLogin(response.credential, false);
                         if (result.success) {
                             navigate('/dashboard');
@@ -159,23 +163,7 @@ const Login = () => {
                 cancel_on_tap_outside: false
             });
 
-            // Enable One Tap login for returning users - shows automatically if user is signed in to Google
-            window.google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed()) {
-                    console.log('One Tap not displayed:', notification.getNotDisplayedReason());
-                    // One Tap could not be displayed, this is normal for new users or privacy settings
-                }
-                if (notification.isSkippedMoment()) {
-                    console.log('One Tap skipped:', notification.getSkippedReason());
-                    // User closed One Tap by clicking X or pressing Esc
-                }
-            });
-
-            const container = document.getElementById('google-signin-button');
-            if (container && !googleBtnRenderedRef.current) {
-                window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' });
-                googleBtnRenderedRef.current = true;
-            }
+            setGoogleReady(true);
         } catch (e) {
             console.error('Google init error', e);
             setError('Google init failed');
@@ -317,27 +305,41 @@ const Login = () => {
                         </div>
 
                         {/* Google Sign In Button */}
-                        <div className="flex justify-center">
-                            <div id="google-signin-button" className="w-full"></div>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                setError('');
 
-                        {/* Alternative Google Sign In - Manual trigger */}
-                        <div className="flex justify-center mt-2">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    // Trigger Google One Tap manually if it didn't show automatically
-                                    if (window.google?.accounts?.id) {
-                                        window.google.accounts.id.prompt();
-                                    } else {
-                                        setError('Google services not ready');
-                                    }
-                                }}
-                                className="text-gray-400 hover:text-white text-sm underline transition-colors"
-                            >
-                                Try Google One Tap Login
-                            </button>
-                        </div>
+                                if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+                                    setError('Google Client ID missing');
+                                    return;
+                                }
+                                if (!googleReady) {
+                                    await loadGoogleScript();
+                                    await initGoogle();
+                                }
+                                if (window.google?.accounts?.id) {
+                                    window.google.accounts.id.prompt((notification) => {
+                                        if (notification.isNotDisplayed()) {
+                                            console.log('One Tap not displayed:', notification.getNotDisplayedReason());
+                                        }
+                                        if (notification.isSkippedMoment()) {
+                                            console.log('One Tap skipped:', notification.getSkippedReason());
+                                        }
+                                    });
+                                } else {
+                                    setError('Google auth not ready');
+                                }
+                            }}
+                            className="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:ring-offset-2 transition-colors flex items-center justify-center"
+                        >
+                            <img
+                                src="https://developers.google.com/identity/images/g-logo.png"
+                                alt="Google"
+                                className="w-5 h-5 mr-2"
+                            />
+                            {googleReady ? 'Sign in with Google' : 'Loading Google...'}
+                        </button>
                     </form>
 
                     {/* Footer Links */}
