@@ -22,6 +22,7 @@ const Register = () => {
     const [otpLoading, setOtpLoading] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
+    const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
 
     const { register, googleLogin } = useAuth();
     const navigate = useNavigate();
@@ -66,12 +67,16 @@ const Register = () => {
                         setError('No credential received');
                         return;
                     }
-                    // Check if user has accepted terms before proceeding
+
+                    // Store the credential and check terms
                     if (!termsAccepted) {
-                        setError('You must accept the Terms and Conditions to continue with Google signup');
+                        setPendingGoogleCredential(response.credential);
+                        setShowTermsModal(true);
                         return;
                     }
-                    const result = await googleLogin(response.credential, true); // Pass terms acceptance
+
+                    // If terms are already accepted, proceed with Google login
+                    const result = await googleLogin(response.credential, true);
                     if (result.success) navigate('/dashboard'); else setError(result.error);
                 },
                 ux_mode: 'popup'
@@ -380,7 +385,7 @@ const Register = () => {
 
                                 // Check if terms are accepted first
                                 if (!termsAccepted) {
-                                    setError('You must accept the Terms and Conditions before signing up with Google');
+                                    setShowTermsModal(true);
                                     return;
                                 }
 
@@ -529,9 +534,26 @@ const Register = () => {
             <TermsAndConditionsModal
                 isOpen={showTermsModal}
                 onClose={() => setShowTermsModal(false)}
-                onAccept={() => {
+                onAccept={async () => {
                     setTermsAccepted(true);
                     setShowTermsModal(false);
+
+                    // If there's a pending Google credential, complete the Google login
+                    if (pendingGoogleCredential) {
+                        try {
+                            const result = await googleLogin(pendingGoogleCredential, true);
+                            if (result.success) {
+                                navigate('/dashboard');
+                            } else {
+                                setError(result.error);
+                            }
+                        } catch (err) {
+                            console.error('Google login error:', err);
+                            setError('Failed to complete Google signup. Please try again.');
+                        } finally {
+                            setPendingGoogleCredential(null);
+                        }
+                    }
                 }}
             />
         </div>

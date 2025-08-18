@@ -142,7 +142,7 @@ const Tasks = () => {
                 fetchTasks();
                 fetchCompletedTasks();
             } else {
-                alert(data.error || 'Failed to submit review');
+                alert(data.error || data.message || 'Failed to submit review');
             }
         } catch (error) {
             console.error('Error submitting review:', error);
@@ -350,8 +350,8 @@ const Tasks = () => {
                                     <div
                                         key={task.id}
                                         className={`bg-white/10 rounded-lg p-4 border-2 transition-all ${task.can_complete
-                                                ? 'border-green-400 hover:border-green-300 cursor-pointer hover:bg-white/20'
-                                                : 'border-gray-500 opacity-60'
+                                            ? 'border-green-400 hover:border-green-300 cursor-pointer hover:bg-white/20'
+                                            : 'border-gray-500 opacity-60'
                                             }`}
                                         onClick={() => task.can_complete && handleTaskClick(task)}
                                     >
