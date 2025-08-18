@@ -126,7 +126,8 @@ CORS_ALLOWED_ORIGINS = [
     os.getenv('FASTAPI_URL', "https://emofelix-fastapi.onrender.com"),
     os.getenv('FRONTEND_URL', "https://emofelix.netlify.app"),
     "https://emofelix.in",
-    "http://emofelix.in"
+    "http://emofelix.in",
+    "https://emofelix.pythonanywhere.com"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -190,4 +191,5 @@ GEMINI_MODEL_NAME = os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash')
 
 CSRF_TRUSTED_ORIGINS = [
     "https://emofelix-backend.onrender.com",
+    "https://emofelix.pythonanywhere.com",
 ]

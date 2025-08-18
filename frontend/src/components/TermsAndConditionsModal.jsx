@@ -41,7 +41,7 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept, isLoading = false 
         </div>
 
         {/* Terms Content */}
-        <div 
+        <div
           className="flex-1 p-6 overflow-y-auto text-gray-700 leading-relaxed"
           onScroll={handleScroll}
         >
@@ -49,8 +49,8 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept, isLoading = false 
             <section>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">1. Introduction</h3>
               <p>
-                Welcome to EmoFelix! These Terms and Conditions (&quot;Terms&quot;) govern your use of the EmoFelix 
-                mobile application and related services provided by EmoFelix (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). 
+                Welcome to EmoFelix! These Terms and Conditions (&quot;Terms&quot;) govern your use of the EmoFelix
+                mobile application and related services provided by EmoFelix (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;).
                 By accessing or using our service, you agree to be bound by these Terms.
               </p>
             </section>
@@ -58,9 +58,9 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept, isLoading = false 
             <section>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">2. Description of Service</h3>
               <p>
-                EmoFelix is an AI-powered emotional support platform that provides users with virtual 
-                companions and characters designed to offer emotional support, companionship, and 
-                interactive conversations. Our service includes features such as custom character 
+                EmoFelix is an AI-powered emotional support platform that provides users with virtual
+                companions and characters designed to offer emotional support, companionship, and
+                interactive conversations. Our service includes features such as custom character
                 creation, voice interactions, and personalized emotional support experiences.
               </p>
             </section>
@@ -150,8 +150,8 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept, isLoading = false 
             <section>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">11. Changes to Terms</h3>
               <p>
-                We reserve the right to modify these Terms at any time. We will notify users of significant 
-                changes through the app or email. Continued use of the service after changes constitutes 
+                We reserve the right to modify these Terms at any time. We will notify users of significant
+                changes through the app or email. Continued use of the service after changes constitutes
                 acceptance of the new Terms.
               </p>
             </section>
@@ -202,7 +202,7 @@ const TermsAndConditionsModal = ({ isOpen, onClose, onAccept, isLoading = false 
                 I have read and agree to the Terms and Conditions
               </span>
             </label>
-            
+
             <div className="flex space-x-3">
               <button
                 onClick={onClose}

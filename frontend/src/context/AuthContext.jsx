@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (error) {
             console.error('Login failed:', error);
-            
+
             // Handle terms acceptance requirement
             if (error.response?.status === 403 && error.response?.data?.requires_terms_acceptance) {
                 return {
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
                     requires_terms_acceptance: true
                 };
             }
-            
+
             return {
                 success: false,
                 error: error.response?.data?.detail || 'Login failed'
@@ -136,7 +136,7 @@ export const AuthProvider = ({ children }) => {
 
     const googleLogin = async (idToken, termsAccepted = false) => {
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/auth/google-login/`, { 
+            const response = await axios.post(`${API_BASE_URL}/api/auth/google-login/`, {
                 id_token: idToken,
                 terms_accepted: termsAccepted
             });
@@ -148,7 +148,7 @@ export const AuthProvider = ({ children }) => {
             return { success: true };
         } catch (error) {
             console.error('Google login failed:', error);
-            
+
             // Handle terms acceptance requirement for Google login
             if (error.response?.status === 403 && error.response?.data?.requires_terms_acceptance) {
                 return {
@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }) => {
                     requires_terms_acceptance: true
                 };
             }
-            
+
             return { success: false, error: error.response?.data?.error || 'Google login failed' };
         }
     };

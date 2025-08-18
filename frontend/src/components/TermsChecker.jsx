@@ -22,13 +22,13 @@ const TermsChecker = ({ children }) => {
       await axios.post(`${API_BASE_URL}/api/auth/accept-terms/`, {
         terms_accepted: true
       });
-      
+
       // Update user state to reflect terms acceptance
       setShowTermsModal(false);
-      
+
       // Refresh user data
       window.location.reload(); // Simple refresh to get updated user data
-      
+
     } catch (error) {
       console.error('Error accepting terms:', error);
       alert('Error accepting terms. Please try again.');

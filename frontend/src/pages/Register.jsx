@@ -377,13 +377,13 @@ const Register = () => {
                             type="button"
                             onClick={async () => {
                                 setError('');
-                                
+
                                 // Check if terms are accepted first
                                 if (!termsAccepted) {
                                     setError('You must accept the Terms and Conditions before signing up with Google');
                                     return;
                                 }
-                                
+
                                 if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
                                     setError('Google Client ID missing');
                                     return;

@@ -66,14 +66,14 @@ const Login = () => {
 
     const handleAcceptTermsForLogin = async () => {
         if (!pendingUserId) return;
-        
+
         setTermsLoading(true);
         try {
             const response = await axios.post(`${API_BASE_URL}/api/auth/accept-terms-login/`, {
                 user_id: pendingUserId,
                 terms_accepted: true
             });
-            
+
             if (response.data.token) {
                 // Store the token and login
                 localStorage.setItem('token', response.data.token);
