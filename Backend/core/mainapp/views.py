@@ -1017,7 +1017,7 @@ User = get_user_model()
 # Google OAuth config
 GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI = "com.emofelix.app:/oauth2redirect"   # <-- deep link for mobile app
+GOOGLE_REDIRECT_URI = "emofelix://callback"   # <-- deep link for mobile app
 
 
 def mobile_google_login(request):
