@@ -16,8 +16,6 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
     const [termsLoading, setTermsLoading] = useState(false);
-    const [pendingUserId, setPendingUserId] = useState(null);
-    const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
     const [googleReady, setGoogleReady] = useState(false);
 
     const { login, googleLogin } = useAuth();
@@ -45,13 +43,8 @@ const Login = () => {
             } else {
                 // Check if error is due to terms acceptance requirement
                 if (result.error && result.error.includes('Terms and Conditions')) {
-                    // If login failed due to terms, get the user ID and show terms modal
-                    if (result.user_id) {
-                        setPendingUserId(result.user_id);
-                        setShowTermsModal(true);
-                    } else {
-                        setError('Login failed. Please try again.');
-                    }
+                    // If login failed due to terms, show terms modal
+                    setShowTermsModal(true);
                 } else {
                     setError(result.error);
                 }
@@ -67,28 +60,14 @@ const Login = () => {
     const handleAcceptTermsForLogin = async () => {
         setTermsLoading(true);
         try {
-            // Handle regular login with pending user ID
-            if (pendingUserId) {
-                const response = await axios.post(`${API_BASE_URL}/api/auth/accept-terms-login/`, {
-                    user_id: pendingUserId,
-                    terms_accepted: true
-                });
+            // Since user is already logged in with Google, just update terms acceptance
+            const response = await axios.post(`${API_BASE_URL}/api/auth/accept-terms/`, {
+                terms_accepted: true
+            });
 
-                if (response.data.token) {
-                    localStorage.setItem('token', response.data.token);
-                    setShowTermsModal(false);
-                    window.location.reload();
-                }
-            }
-            // Handle Google login with pending credential
-            else if (pendingGoogleCredential) {
-                const result = await googleLogin(pendingGoogleCredential, true);
-                if (result.success) {
-                    setShowTermsModal(false);
-                    navigate('/dashboard');
-                } else {
-                    setError(result.error);
-                }
+            if (response.data) {
+                setShowTermsModal(false);
+                navigate('/dashboard');
             }
         } catch (error) {
             console.error('Terms acceptance error:', error);
@@ -100,8 +79,6 @@ const Login = () => {
 
     const handleTermsModalClose = () => {
         setShowTermsModal(false);
-        setPendingUserId(null);
-        setPendingGoogleCredential(null);
     };
 
     const loadGoogleScript = () => {
@@ -142,16 +119,17 @@ const Login = () => {
                     }
                     try {
                         setLoading(true);
-                        // For login, try Google login - auto-create account if doesn't exist
+                        // Google login - user will be logged in immediately
                         const result = await googleLogin(response.credential, false);
                         if (result.success) {
-                            navigate('/dashboard');
-                        } else if (result.requires_terms_acceptance) {
-                            // User logged in but needs to accept terms (for new Google accounts)
-                            setPendingGoogleCredential(response.credential);
-                            setShowTermsModal(true);
+                            // Check if user needs to accept terms after logging in
+                            if (result.requires_terms_acceptance) {
+                                setShowTermsModal(true);
+                            } else {
+                                // User is fully logged in, go to dashboard
+                                navigate('/dashboard');
+                            }
                         } else {
-                            // Other errors (network, server issues, etc.)
                             setError(result.error || 'Google login failed');
                         }
                     } catch (error) {

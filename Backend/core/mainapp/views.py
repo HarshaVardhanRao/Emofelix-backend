@@ -273,42 +273,49 @@ class GoogleLoginView(APIView):
                 }
             )
             
-            # For new users, check terms acceptance
-            if created and not terms_accepted:
-                # Don't delete the user, just require terms acceptance
-                return Response({
-                    'error': 'You must accept the Terms and Conditions to continue',
-                    'requires_terms_acceptance': True,
-                    'user_id': user.id
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            # For new users who accepted terms, update their acceptance status
-            if created and terms_accepted:
+            # For users who accepted terms in this request, update their acceptance status
+            if terms_accepted:
                 from django.utils import timezone
                 user.terms_accepted = True
                 user.terms_accepted_at = timezone.now()
                 user.save()
             
-            # For existing users, check if they have accepted terms
-            if not created and not user.terms_accepted:
-                return Response({
-                    'error': 'You must accept the current Terms and Conditions to continue',
-                    'requires_terms_acceptance': True,
-                    'user_id': user.id
-                }, status=status.HTTP_403_FORBIDDEN)
-            
+            # Always allow login, but let frontend know if terms need to be accepted
             drf_token, _ = Token.objects.get_or_create(user=user)
-            return Response({
+            response_data = {
                 'token': drf_token.key,
                 'user_id': user.id,
                 'email': user.email,
-            })
+            }
+            
+            # Add terms acceptance requirement flag if needed
+            if not user.terms_accepted:
+                response_data['requires_terms_acceptance'] = True
+                
+            return Response(response_data)
         except ValueError:
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)
 
 class AcceptTermsView(APIView):
-    """API Endpoint for existing users to accept terms and conditions."""
+    """API Endpoint for authenticated users to accept terms and conditions."""
     permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        terms_accepted = request.data.get('terms_accepted', False)
+        
+        if not terms_accepted:
+            return Response({'error': 'You must accept the Terms and Conditions'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = request.user
+        from django.utils import timezone
+        user.terms_accepted = True
+        user.terms_accepted_at = timezone.now()
+        user.save()
+        
+        return Response({
+            'message': 'Terms accepted successfully',
+            'terms_accepted': True
+        })
     
     def post(self, request):
         user = request.user

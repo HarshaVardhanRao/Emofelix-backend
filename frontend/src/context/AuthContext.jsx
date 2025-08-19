@@ -140,25 +140,21 @@ export const AuthProvider = ({ children }) => {
                 id_token: idToken,
                 terms_accepted: termsAccepted
             });
-            const { token: authToken } = response.data;
+            
+            // User is always logged in successfully, but may need to accept terms
+            const { token: authToken, requires_terms_acceptance } = response.data;
             setToken(authToken);
             localStorage.setItem('token', authToken);
+            
             const profileResponse = await axios.get(`${API_BASE_URL}/api/profile/`);
             setUser(profileResponse.data);
-            return { success: true };
+            
+            return { 
+                success: true, 
+                requires_terms_acceptance: requires_terms_acceptance 
+            };
         } catch (error) {
             console.error('Google login failed:', error);
-
-            // Handle terms acceptance requirement for Google login
-            if (error.response?.status === 403 && error.response?.data?.requires_terms_acceptance) {
-                return {
-                    success: false,
-                    error: error.response.data.error,
-                    user_id: error.response.data.user_id,
-                    requires_terms_acceptance: true
-                };
-            }
-
             return { success: false, error: error.response?.data?.error || 'Google login failed' };
         }
     };
