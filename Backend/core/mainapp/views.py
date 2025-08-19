@@ -291,7 +291,7 @@ class GoogleLoginView(APIView):
             # Add terms acceptance requirement flag if needed
             if not user.terms_accepted:
                 response_data['requires_terms_acceptance'] = True
-                
+            
             return Response(response_data)
         except ValueError:
             return Response({'error': 'Invalid Google token'}, status=status.HTTP_400_BAD_REQUEST)

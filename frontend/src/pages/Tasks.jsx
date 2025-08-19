@@ -142,11 +142,13 @@ const Tasks = () => {
                 fetchTasks();
                 fetchCompletedTasks();
             } else {
-                alert(data.error || data.message || 'Failed to submit review');
+                alert(data.error || data.message || data.what_you_like[0]
+                    || 'Failed to submit review');
             }
         } catch (error) {
             console.error('Error submitting review:', error);
-            alert('Failed to submit review');
+            alert(error.message || error.what_you_like[0]
+                || 'Failed to submit review');
         } finally {
             setProcessing(prev => ({ ...prev, review: false }));
         }

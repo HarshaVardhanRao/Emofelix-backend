@@ -13,10 +13,10 @@ import Profile from './pages/Profile';
 import Tasks from './pages/Tasks';
 import LoadingSpinner from './components/LoadingSpinner';
 
+
 // Home Route Component (redirect authenticated users to loved ones)
 const HomeRoute = () => {
   const { isAuthenticated, loading } = useAuth();
-
   if (loading) {
     return <LoadingSpinner />;
   }

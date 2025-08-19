@@ -1,561 +1,441 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle } from 'lucide-react';
-import { API_BASE_URL } from '../apiBase';
-import TermsAndConditionsModal from '../components/TermsAndConditionsModal';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Mail, Lock, User, AlertCircle, Heart, Shield } from "lucide-react";
+import axios from "axios";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../apiBase";
+import TermsAndConditionsModal from "../components/TermsAndConditionsModal";
 
 const Register = () => {
     const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        first_name: '',
-        last_name: '',
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        otp: "",
     });
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [error, setError] = useState('');
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
-    const [showOtpModal, setShowOtpModal] = useState(false);
-    const [otp, setOtp] = useState('');
-    const [otpLoading, setOtpLoading] = useState(false);
+    const [otpSending, setOtpSending] = useState(false);
+    const [otpSent, setOtpSent] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
-    const [pendingGoogleCredential, setPendingGoogleCredential] = useState(null);
 
-    const { register, googleLogin } = useAuth();
+    const { googleLogin } = useAuth();
     const navigate = useNavigate();
-
-    // Google Auth state & helpers (aligned with Login.jsx)
-    const googleBtnRenderedRef = useRef(false);
-    const [googleReady, setGoogleReady] = useState(false);
-
-    const loadGoogleScript = () => {
-        return new Promise((resolve, reject) => {
-            if (window.google && window.google.accounts && window.google.accounts.id) {
-                return resolve();
-            }
-            const existing = document.getElementById('google-identity-script');
-            if (existing) {
-                existing.addEventListener('load', () => resolve());
-                existing.addEventListener('error', reject);
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = 'https://accounts.google.com/gsi/client';
-            script.async = true;
-            script.defer = true;
-            script.id = 'google-identity-script';
-            script.onload = () => resolve();
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-    };
-
-    const initGoogle = useCallback(async () => {
-        if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-            console.warn('VITE_GOOGLE_CLIENT_ID not set');
-            return;
-        }
-        if (!(window.google && window.google.accounts && window.google.accounts.id)) return;
-        try {
-            window.google.accounts.id.initialize({
-                client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-                callback: async (response) => {
-                    if (!response.credential) {
-                        setError('No credential received');
-                        return;
-                    }
-
-                    // Store the credential and check terms
-                    if (!termsAccepted) {
-                        setPendingGoogleCredential(response.credential);
-                        setShowTermsModal(true);
-                        return;
-                    }
-
-                    // If terms are already accepted, proceed with Google login
-                    const result = await googleLogin(response.credential, true);
-                    if (result.success) navigate('/dashboard'); else setError(result.error);
-                },
-                auto_select: false,
-                cancel_on_tap_outside: false
-            });
-            const container = document.getElementById('google_button_container');
-            if (container && !googleBtnRenderedRef.current) {
-                window.google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with' });
-                googleBtnRenderedRef.current = true;
-            }
-            setGoogleReady(true);
-        } catch (e) {
-            console.error('Google init error', e);
-            setError('Google init failed');
-        }
-    }, [googleLogin, navigate, termsAccepted]);
-
-    useEffect(() => {
-        loadGoogleScript().then(initGoogle).catch(err => {
-            console.error('Google script load failed', err);
-            setError('Failed to load Google services');
-        });
-    }, [initGoogle]);
 
     const handleChange = (e) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
         });
-        // Clear error when user starts typing
-        if (error) setError('');
+        if (error) setError(""); // clear error when typing
+        if (success) setSuccess(""); // clear success when typing
     };
 
-    const validateForm = () => {
+    const handleSendOTP = async () => {
+        if (!formData.email) {
+            setError("Please enter your email first");
+            return;
+        }
+
         if (!termsAccepted) {
-            setError('You must accept the Terms and Conditions to register');
-            return false;
+            setShowTermsModal(true);
+            return;
         }
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            return false;
+
+        setOtpSending(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            await axios.post(`${API_BASE_URL}/api/send-otp/`, {
+                email: formData.email,
+            });
+
+            setOtpSent(true);
+            setSuccess("OTP sent successfully! Please check your email.");
+        } catch (err) {
+            console.error("OTP sending error:", err);
+            setError(err.response?.data?.error || "Failed to send OTP. Please try again.");
+        } finally {
+            setOtpSending(false);
         }
-        if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters long');
-            return false;
-        }
-        return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
-
-        if (!validateForm()) {
-            setLoading(false);
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match");
             return;
         }
 
+        if (!termsAccepted) {
+            setShowTermsModal(true);
+            return;
+        }
+
+        if (!otpSent) {
+            setError("Please send and verify OTP first");
+            return;
+        }
+
+        if (!formData.otp) {
+            setError("Please enter the OTP sent to your email");
+            return;
+        }
+
+        setLoading(true);
+        setError("");
+        setSuccess("");
+
         try {
-            // Send OTP first
-            const response = await fetch(`${API_BASE_URL}/api/send-otp/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email: formData.email }),
+            const response = await axios.post(`${API_BASE_URL}/api/register/`, {
+                first_name: formData.name.split(' ')[0] || formData.name,
+                last_name: formData.name.split(' ').slice(1).join(' ') || '',
+                email: formData.email,
+                password: formData.password,
+                otp: formData.otp,
+                terms_accepted: termsAccepted,
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                setShowOtpModal(true);
-            } else {
-                setError(data.error || 'Failed to send OTP');
+            if (response.data) {
+                setSuccess("Registration successful! Redirecting to login...");
+                setTimeout(() => {
+                    navigate("/login");
+                }, 2000);
             }
-        } catch (error) {
-            console.error('OTP send error:', error);
-            setError('Failed to send OTP. Please try again.');
+        } catch (err) {
+            console.error("Register error:", err);
+            if (err.response?.data?.error) {
+                setError(err.response.data.error);
+            } else if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else if (err.response?.status === 410) {
+                setError("OTP has expired. Please request a new OTP.");
+                setOtpSent(false);
+            } else {
+                setError("Registration failed. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const handleOtpSubmit = async (e) => {
-        e.preventDefault();
-        setOtpLoading(true);
-        setError('');
-
-        try {
-            const result = await register({
-                email: formData.email,
-                password: formData.password,
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                terms_accepted: true, // Include terms acceptance
-                otp: otp,
-            });
-
-            if (result.success) {
-                navigate('/dashboard');
-            } else {
-                setError(result.error);
-            }
-        } catch (error) {
-            console.error('Registration error:', error);
-            setError('An unexpected error occurred. Please try again.');
-        } finally {
-            setOtpLoading(false);
-        }
-    };
-
-    const closeOtpModal = () => {
-        setShowOtpModal(false);
-        setOtp('');
-        setError('');
-    };
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    {/* Header */}
-                    <div className="text-center">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                            Join Emofelix
-                        </h2>
-                        <p className="text-gray-600">
-                            Create your account and start your emotional journey
-                        </p>
-                    </div>
-
-                    {/* Form */}
-                    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                        {error && (
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                                <AlertCircle className="h-5 w-5 text-red-500" />
-                                <span className="text-red-700 text-sm">{error}</span>
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {/* Name Fields */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="first_name" className="block text-sm font-medium text-gray-700 mb-1">
-                                        First Name
-                                    </label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                        <input
-                                            id="first_name"
-                                            name="first_name"
-                                            type="text"
-                                            required
-                                            value={formData.first_name}
-                                            onChange={handleChange}
-                                            className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                            placeholder="John"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label htmlFor="last_name" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Last Name
-                                    </label>
-                                    <input
-                                        id="last_name"
-                                        name="last_name"
-                                        type="text"
-                                        required
-                                        value={formData.last_name}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                        placeholder="Doe"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Email Field */}
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Email Address
-                                </label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                    <input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        required
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                        placeholder="john@example.com"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Password Field */}
-                            <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type={showPassword ? 'text' : 'password'}
-                                        required
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        className="pl-10 pr-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                        placeholder="Create a strong password"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Confirm Password Field */}
-                            <div>
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Confirm Password
-                                </label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                    <input
-                                        id="confirmPassword"
-                                        name="confirmPassword"
-                                        type={showConfirmPassword ? 'text' : 'password'}
-                                        required
-                                        value={formData.confirmPassword}
-                                        onChange={handleChange}
-                                        className="pl-10 pr-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                                        placeholder="Confirm your password"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Terms and Conditions */}
-                        <div className="flex items-start space-x-3">
-                            <input
-                                id="terms"
-                                type="checkbox"
-                                checked={termsAccepted}
-                                onChange={(e) => setTermsAccepted(e.target.checked)}
-                                className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
-                            />
-                            <label htmlFor="terms" className="text-sm text-gray-700">
-                                I have read and agree to the{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => setShowTermsModal(true)}
-                                    className="text-primary-600 hover:text-primary-700 underline"
-                                >
-                                    Terms and Conditions
-                                </button>
-                            </label>
-                        </div>
-
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {loading ? (
-                                <div className="flex items-center justify-center">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                    Sending OTP...
-                                </div>
-                            ) : (
-                                'Send OTP'
-                            )}
-                        </button>
-
-                        {/* Divider */}
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300" />
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">Or continue with</span>
-                            </div>
-                        </div>
-
-                        {/* Google Sign Up */}
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                setError('');
-
-                                // Check if terms are accepted first
-                                if (!termsAccepted) {
-                                    setShowTermsModal(true);
-                                    return;
-                                }
-
-                                if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-                                    setError('Google Client ID missing');
-                                    return;
-                                }
-                                if (!googleReady) {
-                                    await loadGoogleScript();
-                                    await initGoogle();
-                                }
-                                if (window.google?.accounts?.id) {
-                                    window.google.accounts.id.prompt((notification) => {
-                                        if (notification.isNotDisplayed()) {
-                                            console.log('One Tap not displayed:', notification.getNotDisplayedReason());
-                                        }
-                                        if (notification.isSkippedMoment()) {
-                                            console.log('One Tap skipped:', notification.getSkippedReason());
-                                        }
-                                    });
-                                } else {
-                                    setError('Google auth not ready');
-                                }
-                            }}
-                            className="w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors flex items-center justify-center"
-                        >
-                            <img
-                                src="https://developers.google.com/identity/images/g-logo.png"
-                                alt="Google"
-                                className="w-5 h-5 mr-2"
-                            />
-                            {googleReady ? 'Sign up with Google' : 'Loading Google...'}
-                        </button>
-
-                        {/* Sign In Link */}
-                        <div className="text-center">
-                            <span className="text-gray-600">Already have an account? </span>
-                            <Link
-                                to="/login"
-                                className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                            >
-                                Sign in here
-                            </Link>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Additional Info */}
-                <div className="text-center">
-                    <p className="text-sm text-gray-500">
-                        By creating an account, you agree to our{' '}
-                        <Link to="/terms" className="text-primary-600 hover:text-primary-700">
-                            Terms of Service
-                        </Link>{' '}
-                        and{' '}
-                        <Link to="/privacy" className="text-primary-600 hover:text-primary-700">
-                            Privacy Policy
-                        </Link>
-                    </p>
-                </div>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-violet-800 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+            {/* Animated Background Elements */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(15)].map((_, i) => (
+                    <div
+                        key={i}
+                        className="absolute w-3 h-3 bg-neon-blue rounded-full animate-float-bounce opacity-40"
+                        style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 6}s`,
+                            animationDuration: `${4 + Math.random() * 4}s`,
+                        }}
+                    ></div>
+                ))}
             </div>
 
-            {/* OTP Modal */}
-            {showOtpModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
-                        <div className="text-center mb-6">
-                            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                                Verify Your Email
-                            </h3>
-                            <p className="text-gray-600">
-                                We've sent a 6-digit verification code to
-                            </p>
-                            <p className="text-primary-600 font-medium">
-                                {formData.email}
-                            </p>
+            <div className="max-w-md w-full space-y-8 relative z-10">
+                <div className="glass-card rounded-3xl p-8 shadow-neon-lg animate-bounce-in">
+                    {/* Header */}
+                    <div className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 bg-gradient-to-r from-neon-pink to-neon-blue rounded-full flex items-center justify-center animate-pulse-glow">
+                                <Heart className="w-8 h-8 text-white" />
+                            </div>
                         </div>
+                        <h2 className="text-3xl font-bold text-white mb-2">
+                            Create your{" "}
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-pink to-neon-blue">
+                                EmoFelix
+                            </span>{" "}
+                            account
+                        </h2>
+                        <p className="text-gray-300 text-sm">Join and connect instantly</p>
+                    </div>
 
-                        <form onSubmit={handleOtpSubmit} className="space-y-6">
-                            {error && (
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
-                                    <AlertCircle className="h-5 w-5 text-red-500" />
-                                    <span className="text-red-700 text-sm">{error}</span>
+                    {/* Error Display */}
+                    {error && (
+                        <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4 flex items-center backdrop-blur-sm animate-shake">
+                            <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
+                            <span className="text-red-200 text-sm">{error}</span>
+                        </div>
+                    )}
+
+                    {/* Success Display */}
+                    {success && (
+                        <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-3 mb-4 flex items-center backdrop-blur-sm">
+                            <Shield className="w-5 h-5 text-green-400 mr-2" />
+                            <span className="text-green-200 text-sm">{success}</span>
+                        </div>
+                    )}
+
+                    {/* Register Form */}
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                        {/* Name */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                Full Name
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <User className="h-5 w-5 text-gray-400" />
                                 </div>
-                            )}
-
-                            <div>
-                                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Verification Code
-                                </label>
                                 <input
-                                    id="otp"
                                     type="text"
-                                    maxLength="6"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors text-center text-xl tracking-widest"
-                                    placeholder="000000"
-                                    autoComplete="off"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleChange}
+                                    required
+                                    className="glass-input pl-10 w-full h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all duration-300"
+                                    placeholder="Enter your full name"
                                 />
                             </div>
+                        </div>
 
-                            <div className="flex space-x-4">
+                        {/* Email */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                Email Address
+                            </label>
+                            <div className="flex space-x-2">
+                                <div className="relative flex-1">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                        disabled={otpSent}
+                                        className="glass-input pl-10 w-full h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all duration-300 disabled:opacity-50"
+                                        placeholder="Enter your email"
+                                    />
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={closeOtpModal}
-                                    className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                                    onClick={handleSendOTP}
+                                    disabled={otpSending || !formData.email || otpSent}
+                                    className="px-4 py-3 bg-gradient-to-r from-neon-blue to-neon-pink text-white font-medium rounded-xl hover:shadow-neon-sm transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none whitespace-nowrap"
                                 >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={otpLoading || otp.length !== 6}
-                                    className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {otpLoading ? (
-                                        <div className="flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                            Verifying...
+                                    {otpSending ? (
+                                        <div className="flex items-center">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+                                            Sending...
                                         </div>
+                                    ) : otpSent ? (
+                                        "OTP Sent ✓"
                                     ) : (
-                                        'Verify & Register'
+                                        "Send OTP"
                                     )}
                                 </button>
                             </div>
-                        </form>
+                        </div>
 
-                        <div className="text-center mt-4">
-                            <p className="text-sm text-gray-500">
-                                Didn't receive the code?{' '}
+                        {/* OTP Input - Only show after OTP is sent */}
+                        {otpSent && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                    Enter OTP
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Shield className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        name="otp"
+                                        value={formData.otp}
+                                        onChange={handleChange}
+                                        required
+                                        maxLength="6"
+                                        className="glass-input pl-10 w-full h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all duration-300"
+                                        placeholder="Enter 6-digit OTP from email"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Check your email for the OTP. It's valid for 10 minutes.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Password */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                Password
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required
+                                    className="glass-input pl-10 pr-10 w-full h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all duration-300"
+                                    placeholder="Enter your password"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Confirm Password */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                Confirm Password
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    required
+                                    className="glass-input pl-10 pr-10 w-full h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-blue focus:border-transparent transition-all duration-300"
+                                    placeholder="Confirm your password"
+                                />
                                 <button
                                     type="button"
-                                    onClick={handleSubmit}
-                                    className="text-primary-600 hover:text-primary-700 font-medium"
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    onClick={() => setShowPassword(!showPassword)}
                                 >
-                                    Resend OTP
+                                    {showPassword ? (
+                                        <span className="text-gray-400 hover:text-white transition-colors text-sm">
+                                            Hide
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-400 hover:text-white transition-colors text-sm">
+                                            Show
+                                        </span>
+                                    )}
                                 </button>
-                            </p>
+                            </div>
                         </div>
+
+                        {/* Terms and Conditions Checkbox */}
+                        <div className="flex items-start space-x-3">
+                            <input
+                                type="checkbox"
+                                id="terms"
+                                checked={termsAccepted}
+                                onChange={(e) => setTermsAccepted(e.target.checked)}
+                                className="mt-1 w-4 h-4 text-neon-blue bg-white/10 border-white/20 rounded focus:ring-neon-blue focus:ring-2"
+                            />
+                            <label htmlFor="terms" className="text-sm text-gray-300">
+                                I agree to the{" "}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowTermsModal(true)}
+                                    className="text-neon-blue hover:text-neon-pink underline transition-colors"
+                                >
+                                    Terms and Conditions
+                                </button>{" "}
+                                and Privacy Policy
+                            </label>
+                        </div>
+
+                        {/* Register Button */}
+                        <button
+                            type="submit"
+                            disabled={loading || !otpSent}
+                            className="w-full h-12 bg-gradient-to-r from-neon-pink to-neon-blue text-white font-semibold rounded-xl hover:shadow-neon-lg transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
+                        >
+                            {loading ? (
+                                <div className="flex items-center">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                    Creating account...
+                                </div>
+                            ) : !otpSent ? (
+                                "Send OTP to Continue"
+                            ) : (
+                                "Verify OTP & Create Account"
+                            )}
+                        </button>
+                    </form>
+
+                    {/* OR Divider */}
+                    <div className="my-6 flex items-center">
+                        <div className="flex-grow border-t border-gray-600"></div>
+                        <span className="mx-4 text-gray-400 text-sm">OR</span>
+                        <div className="flex-grow border-t border-gray-600"></div>
+                    </div>
+
+                    {/* Google Signup */}
+                    <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+                            if (!credentialResponse.credential) {
+                                setError("No Google credential received");
+                                return;
+                            }
+                            try {
+                                setLoading(true);
+                                const result = await googleLogin(
+                                    credentialResponse.credential,
+                                    false
+                                );
+                                if (result.success) {
+                                    if (result.requires_terms_acceptance) {
+                                        setShowTermsModal(true);
+                                    } else {
+                                        navigate("/dashboard");
+                                    }
+                                } else {
+                                    setError(result.error || "Google login failed");
+                                }
+                            } catch (err) {
+                                console.error("Google login error:", err);
+                                setError("Google login failed. Please try again.");
+                            } finally {
+                                setLoading(false);
+                            }
+                        }}
+                        onError={() => {
+                            setError("Google login failed. Please try again.");
+                        }}
+                    />
+
+                    {/* Footer */}
+                    <div className="mt-6 space-y-4 text-center">
+                        <span className="text-gray-400 text-sm">
+                            Already have an account?{" "}
+                        </span>
+                        <Link
+                            to="/login"
+                            className="text-neon-pink hover:text-neon-blue transition-colors text-sm font-semibold"
+                        >
+                            Sign in
+                        </Link>
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Terms and Conditions Modal */}
             <TermsAndConditionsModal
                 isOpen={showTermsModal}
                 onClose={() => setShowTermsModal(false)}
-                onAccept={async () => {
+                onAccept={() => {
                     setTermsAccepted(true);
                     setShowTermsModal(false);
-
-                    // If there's a pending Google credential, complete the Google login
-                    if (pendingGoogleCredential) {
-                        try {
-                            const result = await googleLogin(pendingGoogleCredential, true);
-                            if (result.success) {
-                                navigate('/dashboard');
-                            } else {
-                                setError(result.error);
-                            }
-                        } catch (err) {
-                            console.error('Google login error:', err);
-                            setError('Failed to complete Google signup. Please try again.');
-                        } finally {
-                            setPendingGoogleCredential(null);
-                        }
+                    // If user was trying to send OTP, send it now
+                    if (!otpSent && formData.email) {
+                        handleSendOTP();
                     }
                 }}
+                isLoading={false}
             />
         </div>
     );
