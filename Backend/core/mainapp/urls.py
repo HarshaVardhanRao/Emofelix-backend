@@ -105,5 +105,7 @@ urlpatterns = [
     path('support-dashboard/reviews/', support_dashboard_app_reviews, name='support-dashboard-reviews'),
     path('support-dashboard/user-referrals/', support_dashboard_user_referrals, name='support-dashboard-user-referrals'),
 
-    path('createsuperuser/', views.create_superuser, name='create-superuser'),
+    # Mobile OAuth
+    path("api/auth/mobile/google-login/", views.mobile_google_login, name="mobile-google-login"),
+    path("api/auth/mobile/google-complete/", views.mobile_google_complete, name="mobile-google-complete"),
 ]

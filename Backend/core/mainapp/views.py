@@ -1002,12 +1002,98 @@ class MyReferralsView(generics.ListAPIView):
     def get_queryset(self):
         return UserReferral.objects.filter(referrer=self.request.user).order_by('-created_at')
 
-def create_superuser(request):
-    """Create a superuser account for admin access."""
-    user = CustomUser.objects.create_superuser(
-        username='emofelixadmin',
-        email='admin@example.com',
-        password='HopireEmofelix'
+
+import requests
+from django.conf import settings
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.shortcuts import redirect
+from django.contrib.auth import get_user_model
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
+User = get_user_model()
+
+# Google OAuth config
+GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
+GOOGLE_REDIRECT_URI = "com.emofelix.app:/oauth2redirect"   # <-- deep link for mobile app
+
+
+def mobile_google_login(request):
+    """
+    Step 1: Redirect user (via Chrome Custom Tab) to Google Auth
+    """
+    google_auth_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={GOOGLE_CLIENT_ID}"
+        f"&redirect_uri={GOOGLE_REDIRECT_URI}"
+        "&response_type=code"
+        "&scope=openid%20email%20profile"
     )
-    user.save()
-    return redirect('/admin/')
+    return redirect(google_auth_url)
+
+
+@csrf_exempt
+def mobile_google_complete(request):
+    """
+    Step 2: Google redirects back to deep link (mobile app), with ?code=
+    The app then sends that code to this endpoint → we exchange it for tokens and return JWT.
+    """
+    code = request.GET.get("code")
+    if not code:
+        return HttpResponseBadRequest("Missing code")
+
+    # Exchange code for tokens
+    token_url = "https://oauth2.googleapis.com/token"
+    token_data = {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    token_resp = requests.post(token_url, data=token_data)
+    token_json = token_resp.json()
+
+    if "error" in token_json:
+        return JsonResponse({"error": "Token exchange failed", "details": token_json}, status=400)
+
+    access_token = token_json.get("access_token")
+
+    # Fetch user info
+    user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    user_info_resp = requests.get(user_info_url, headers={"Authorization": f"Bearer {access_token}"})
+    user_info = user_info_resp.json()
+
+    email = user_info.get("email")
+    name = user_info.get("name", "")
+    google_id = user_info.get("id")
+
+    if not email:
+        return JsonResponse({"error": "Failed to retrieve email"}, status=400)
+
+    # Get or create Django user
+    user, created = User.objects.get_or_create(
+        username=email,
+        defaults={
+            "email": email,
+            "first_name": name.split(" ")[0] if name else "",
+            "last_name": " ".join(name.split(" ")[1:]) if len(name.split(" ")) > 1 else "",
+        },
+    )
+
+    # Issue JWT for mobile app
+    refresh = RefreshToken.for_user(user)
+
+    return JsonResponse({
+        "refresh": str(refresh),
+        "access": str(refresh.access_token),
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        },
+    })
