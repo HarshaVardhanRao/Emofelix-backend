@@ -275,11 +275,12 @@ class GoogleLoginView(APIView):
             
             # For new users, check terms acceptance
             if created and not terms_accepted:
-                # Delete the user that was just created since terms weren't accepted
-                user.delete()
+                # Don't delete the user, just require terms acceptance
                 return Response({
-                    'error': 'You must accept the Terms and Conditions to create an account'
-                }, status=status.HTTP_400_BAD_REQUEST)
+                    'error': 'You must accept the Terms and Conditions to continue',
+                    'requires_terms_acceptance': True,
+                    'user_id': user.id
+                }, status=status.HTTP_403_FORBIDDEN)
             
             # For new users who accepted terms, update their acceptance status
             if created and terms_accepted:
