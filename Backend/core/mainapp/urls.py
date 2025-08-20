@@ -46,6 +46,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
 
     # API Authentication
+    path('api/profile/count/', views.ProfileCountView, name='api-relation-count'),
     path('api/register/', views.ApiRegisterView.as_view(), name='api-register'),
     path('api/send-otp/', views.send_otp_view, name='verify-otp'),
     path('api/login/', views.ApiLoginView.as_view(), name='api-login'),

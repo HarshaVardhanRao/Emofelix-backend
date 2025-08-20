@@ -1015,8 +1015,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 User = get_user_model()
 
 # Google OAuth config
-GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET
+GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID if settings.GOOGLE_CLIENT_ID else "<YOUR_GOOGLE_CLIENT_ID>"
+GOOGLE_CLIENT_SECRET = settings.GOOGLE_CLIENT_SECRET if settings.GOOGLE_CLIENT_SECRET else "<YOUR_GOOGLE_CLIENT_SECRET>"
 GOOGLE_REDIRECT_URI = "emofelix://callback"   # <-- deep link for mobile app
 
 
@@ -1097,3 +1097,10 @@ def mobile_google_complete(request):
             "last_name": user.last_name,
         },
     })
+
+from .models import ChatHistory
+def ProfileCountView(request):
+    user = request.user
+    relation_count = Relation.objects.filter(user=user).count()
+    user_chats = ChatHistory.objects.filter(user=user).count()
+    return JsonResponse({"relation_count": relation_count, "user_chats": user_chats})

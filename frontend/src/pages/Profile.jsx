@@ -68,14 +68,11 @@ const Profile = () => {
     const fetchStats = useCallback(async () => {
         try {
             // Fetch relations for count
-            const relationsResponse = await axios.get(`${API_BASE_URL}/api/relations/`);
-
-            // Fetch call history for count
-            const historyResponse = await axios.get(`${API_BASE_URL}/api/call-history/`);
+            const profileResponse = await axios.get(`${API_BASE_URL}/api/profile/count/`);
 
             setStats({
-                totalRelations: relationsResponse.data.length,
-                totalChats: historyResponse.data.length,
+                totalRelations: profileResponse.data.relation_count,
+                totalChats: profileResponse.data.user_chats,
                 memberSince: user?.date_joined ? new Date(user.date_joined).getFullYear() : new Date().getFullYear(),
                 currentPlan: 'Free' // This would come from your membership model
             });
