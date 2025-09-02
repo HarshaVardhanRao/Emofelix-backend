@@ -13,7 +13,8 @@ import {
     PhoneOff
 } from 'lucide-react';
 
-import { API_BASE_URL, GEMINI_CHAT_STREAM_URL } from '../apiBase';
+import { API_BASE_URL } from '../apiBase';
+import { sendMessageToExternalAI, buildConversationContext, generateInitialGreeting } from '../utils/aiService';
 
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
@@ -44,14 +45,11 @@ const Chat = () => {
         }
     }, [relationId, navigate]);
 
-    // Helper to stream the initial greeting from Gemini (fire-and-forget)
-    const streamInitialGreeting = useCallback(({ relationType, mood, topic, additionalDetails, nickname }) => {
-        const controller = new AbortController();
-        const { signal } = controller;
+    // Helper to get the initial greeting from External AI (non-streaming)
+    const streamInitialGreeting = useCallback(async ({ relationType, mood, topic, additionalDetails, nickname }) => {
+        console.info('[ExternalAI] Starting initial greeting...');
 
-        console.info('[Gemini] Starting initial greeting stream...');
-
-        // Start with a typing indicator (no default text)
+        // Start with a typing indicator
         const typingId = Date.now();
         setMessages([
             {
@@ -63,89 +61,39 @@ const Chat = () => {
             }
         ]);
 
-        (async () => {
-            try {
-                const body = {
-                    message: 'Start the conversation with a warm, supportive greeting tailored to the provided context and ask a gentle opening question.',
-                    relation_type: relationType || 'Friend',
-                    mood: mood || 'Neutral',
-                    topic: topic || 'General conversation',
-                    additional_details: additionalDetails || '',
-                    nickname: nickname || '',
-                    history: []
-                };
+        try {
+            const greeting = await generateInitialGreeting(
+                relationType || 'Friend',
+                mood || 'Neutral',
+                topic || 'General conversation',
+                additionalDetails || '',
+                nickname || ''
+            );
 
-                const response = await fetch(GEMINI_CHAT_STREAM_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Token ${token}`,
-                    },
-                    body: JSON.stringify(body),
-                    signal,
-                });
-
-                if (!response.ok || !response.body) {
-                    throw new Error('Failed to fetch initial greeting');
+            // Replace typing with actual greeting
+            setMessages([
+                {
+                    id: Date.now(),
+                    content: greeting,
+                    sender: 'ai',
+                    timestamp: new Date().toISOString()
                 }
+            ]);
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let aiResponse = '';
-
-                // Replace typing with an empty AI message we will fill progressively
-                setMessages(prev => prev.filter(msg => !msg.typing));
-                const aiMessageId = typingId + 1;
-                setMessages(prev => [
-                    ...prev,
-                    {
-                        id: aiMessageId,
-                        content: '',
-                        sender: 'ai',
-                        timestamp: new Date().toISOString()
-                    }
-                ]);
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const word = line.slice(6);
-                            if (word.trim() && word !== '[END]') {
-                                aiResponse += word + ' ';
-                                const content = aiResponse.trim();
-                                if (content) {
-                                    setMessages(prev => prev.map(msg =>
-                                        msg.id === aiMessageId ? { ...msg, content } : msg
-                                    ));
-                                }
-                            }
-                        }
-                    }
+            console.info('[ExternalAI] Initial greeting completed');
+        } catch (error) {
+            console.error('[ExternalAI] Initial greeting failed:', error);
+            // Replace typing with error message
+            setMessages([
+                {
+                    id: Date.now(),
+                    content: "Hello my dear! I'm so happy to see you today. How are you feeling? 💝",
+                    sender: 'ai',
+                    timestamp: new Date().toISOString()
                 }
-                console.info('[Gemini] Initial greeting stream completed');
-            } catch (err) {
-                console.error('Initial greeting failed:', err);
-                // Remove typing and show default fallback only on error
-                const defaultMsg = "Hello my dear! I'm so happy to see you today. How are you feeling? 💝";
-                setMessages(prev => prev.filter(msg => !msg.typing));
-                setMessages(prev => [
-                    ...prev,
-                    {
-                        id: typingId + 2,
-                        content: defaultMsg,
-                        sender: 'ai',
-                        timestamp: new Date().toISOString()
-                    }
-                ]);
-            }
-        })();
-
-        return () => controller.abort();
-    }, [token]);
+            ]);
+        }
+    }, []);
 
     useEffect(() => {
         // Wait for auth token before starting initial greeting
@@ -193,67 +141,37 @@ const Chat = () => {
                         // Stream AI response
                         (async () => {
                             try {
-                                const body = {
-                                    message: preferences.additionalDetails,
-                                    relation_type: characterData?.character_type || 'Friend',
-                                    mood: preferences?.moodLabel || preferences?.mood,
-                                    topic: preferences?.topic,
-                                    additional_details: '',
-                                    nickname: (user?.first_name || user?.username),
-                                    history: []
-                                };
+                                const messages = buildConversationContext(
+                                    characterData?.character_type || 'Friend',
+                                    preferences?.moodLabel || preferences?.mood || 'Neutral',
+                                    preferences?.topic || 'General conversation',
+                                    '',
+                                    user?.first_name || user?.username || '',
+                                    [],
+                                    preferences.additionalDetails
+                                );
 
-                                const response = await fetch(GEMINI_CHAT_STREAM_URL, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Token ${token}`,
-                                    },
-                                    body: JSON.stringify(body)
-                                });
+                                const aiResponse = await sendMessageToExternalAI(messages);
 
-                                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                                // Remove typing indicator and add AI response
+                                setMessages(prev => prev.filter(msg => !msg.typing));
+                                setMessages(prev => [...prev, {
+                                    id: Date.now() + 1,
+                                    content: aiResponse,
+                                    sender: 'ai',
+                                    timestamp: new Date().toISOString()
+                                }]);
 
-                                const reader = response.body?.getReader();
-                                if (!reader) throw new Error('No response body');
-
-                                let aiContent = '';
-                                const decoder = new TextDecoder();
-                                const aiMessageId = Date.now() + 1;
-
-                                while (true) {
-                                    const { done, value } = await reader.read();
-                                    if (done) break;
-
-                                    const chunk = decoder.decode(value, { stream: true });
-                                    const lines = chunk.split('\n').filter(line => line.trim());
-
-                                    for (const line of lines) {
-                                        if (line.startsWith('data: ')) {
-                                            const data = line.slice(6);
-                                            if (data === '[DONE]') continue;
-
-                                            try {
-                                                const parsed = JSON.parse(data);
-                                                if (parsed.content) {
-                                                    aiContent += parsed.content;
-                                                    setMessages(prev =>
-                                                        prev.map(msg =>
-                                                            msg.id === aiMessageId
-                                                                ? { ...msg, content: aiContent, typing: false }
-                                                                : msg
-                                                        )
-                                                    );
-                                                }
-                                            } catch (e) {
-                                                console.debug('JSON parse error:', e);
-                                            }
-                                        }
-                                    }
-                                }
                             } catch (error) {
                                 console.error('Streaming error:', error);
                                 setMessages(prev => prev.filter(msg => !msg.typing));
+                                setMessages(prev => [...prev, {
+                                    id: Date.now() + 1,
+                                    content: "I'm sorry my dear, I'm having trouble connecting right now. Please try again. 💕",
+                                    sender: 'ai',
+                                    timestamp: new Date().toISOString(),
+                                    error: true
+                                }]);
                             }
                         })();
                     } else {
@@ -336,61 +254,26 @@ const Chat = () => {
                 content: m.content
             }));
 
-            const body = {
-                message: messageToSend,
-                relation_type: character?.character_type || 'Friend',
-                mood: callPreferences?.moodLabel || callPreferences?.mood,
-                topic: callPreferences?.topic,
-                additional_details: callPreferences?.additionalDetails,
-                nickname: (user?.first_name || user?.username),
-                history: historyPayload
-            };
+            const aiMessages = buildConversationContext(
+                character?.character_type || 'Friend',
+                callPreferences?.moodLabel || callPreferences?.mood || 'Neutral',
+                callPreferences?.topic || 'General conversation',
+                callPreferences?.additionalDetails || '',
+                user?.first_name || user?.username || '',
+                historyPayload,
+                messageToSend
+            );
 
-            const response = await fetch(GEMINI_CHAT_STREAM_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Token ${token}`,
-                },
-                body: JSON.stringify(body),
-            });
+            const aiResponse = await sendMessageToExternalAI(aiMessages);
 
-            if (!response.ok) {
-                throw new Error('Failed to send message');
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let aiResponse = '';
-
+            // Remove typing indicator and add AI response
             setMessages(prev => prev.filter(msg => !msg.typing));
-            const aiMessageId = Date.now() + 2;
             setMessages(prev => [...prev, {
-                id: aiMessageId,
-                content: '',
+                id: Date.now() + 2,
+                content: aiResponse,
                 sender: 'ai',
                 timestamp: new Date().toISOString()
             }]);
-
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const word = line.slice(6);
-                        if (word.trim() && word !== '[END]') {
-                            aiResponse += word + ' ';
-                            setMessages(prev => prev.map(msg =>
-                                msg.id === aiMessageId
-                                    ? { ...msg, content: aiResponse.trim() }
-                                    : msg
-                            ));
-                        }
-                    }
-                }
-            }
         } catch (error) {
             console.error('Failed to send message:', error);
             setMessages(prev => prev.filter(msg => !msg.typing));
