@@ -98,7 +98,7 @@ const CallSetup = () => {
         } catch (error) {
             console.error('[CallSetup] Failed to generate initial greeting:', error);
             // Store a fallback greeting
-            sessionStorage.setItem('initialAIGreeting', 
+            sessionStorage.setItem('initialAIGreeting',
                 `Hello! I'm so glad you're here. How are you feeling today? 💕`
             );
         }
@@ -151,7 +151,7 @@ const CallSetup = () => {
         } catch (error) {
             console.error('[CallSetup] Failed to get AI response:', error);
             // Store a fallback response
-            sessionStorage.setItem('directMessageResponse', 
+            sessionStorage.setItem('directMessageResponse',
                 "I'm here to listen and support you. Please tell me more about what's on your mind. 💝"
             );
         }

@@ -64,7 +64,7 @@ const Chat = () => {
 
         try {
             let greeting;
-            
+
             // Check if we have a pre-generated greeting from CallSetup
             const preGeneratedGreeting = sessionStorage.getItem('initialAIGreeting');
             if (preGeneratedGreeting) {
@@ -158,7 +158,7 @@ const Chat = () => {
                             sessionStorage.removeItem('directMessageResponse');
                         } else {
                             console.info('[Chat] No pre-generated response found, generating new one');
-                            
+
                             // Start AI response streaming using the same logic as handleSendMessage
                             const typingMessage = {
                                 id: Date.now() + 1,
