@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getActiveAIConfig, getAIModel } from './aiConfig';
+import { API_BASE_URL } from '../apiBase';
 
 /**
  * Sends a message to the external AI model and returns the response
@@ -38,6 +39,43 @@ export const sendMessageToExternalAI = async (messages, model = null) => {
         } else {
             throw new Error(`AI Service Error: ${error.message}`);
         }
+    }
+};
+
+/**
+ * Fetches the nickname that a character uses for the user
+ * @param {string} characterId - Character ID
+ * @returns {Promise<string>} - Character's nickname for the user
+ */
+export const fetchCharacterNickname = async (characterId) => {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn('No authentication token found');
+            return '';
+        }
+
+        const response = await axios.get(`${API_BASE_URL}/api/characters/${characterId}/nickname/`, {
+            headers: {
+                'Authorization': `Token ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 200 && response.data?.nickname !== undefined) {
+            return response.data.nickname || '';
+        } else {
+            console.warn('Unexpected response format when fetching nickname:', response);
+            return '';
+        }
+    } catch (error) {
+        console.error('Error fetching character nickname:', error);
+        if (error.response?.status === 404) {
+            console.warn('Character not found when fetching nickname');
+        } else if (error.response?.status === 401) {
+            console.warn('Authentication failed when fetching nickname');
+        }
+        return '';
     }
 };
 
@@ -93,16 +131,29 @@ export const buildConversationContext = (
  * @param {string} mood - User's mood
  * @param {string} topic - Conversation topic  
  * @param {string} additionalDetails - Additional context
- * @param {string} nickname - User's nickname
+ * @param {string} nickname - User's nickname (optional, will be fetched if not provided)
+ * @param {string} characterId - Character ID (used to fetch nickname if nickname not provided)
  * @returns {Promise<string>} - Greeting message
  */
-export const generateInitialGreeting = async (relationType, mood, topic, additionalDetails, nickname) => {
+export const generateInitialGreeting = async (relationType, mood, topic, additionalDetails, nickname = '', characterId = null) => {
+    // Fetch nickname from backend if not provided and characterId is available
+    let finalNickname = nickname;
+    if (!finalNickname && characterId) {
+        try {
+            finalNickname = await fetchCharacterNickname(characterId);
+            console.log(`Fetched nickname for initial greeting (character ${characterId}):`, finalNickname);
+        } catch (error) {
+            console.warn('Failed to fetch nickname for initial greeting, using empty string:', error);
+            finalNickname = '';
+        }
+    }
+
     const messages = buildConversationContext(
         relationType,
         mood,
         topic,
         additionalDetails,
-        nickname,
+        finalNickname,
         [],
         'Start the conversation with a warm, supportive greeting tailored to the provided context and ask a gentle opening question.'
     );
@@ -118,7 +169,8 @@ export const generateInitialGreeting = async (relationType, mood, topic, additio
  * @param {string} params.mood - User's current mood
  * @param {string} params.topic - Conversation topic
  * @param {string} params.additionalDetails - Additional context
- * @param {string} params.nickname - User's nickname
+ * @param {string} params.nickname - User's nickname (optional, will be fetched if not provided)
+ * @param {string} params.characterId - Character ID (used to fetch nickname if nickname not provided)
  * @param {Array} params.history - Previous conversation messages
  * @returns {Promise<string>} - AI response
  */
@@ -129,10 +181,23 @@ export const sendChatMessage = async ({
     topic = 'General conversation',
     additionalDetails = '',
     nickname = '',
+    characterId = null,
     history = []
 }) => {
     if (!message?.trim()) {
         throw new Error('Message is required');
+    }
+
+    // Fetch nickname from backend if not provided and characterId is available
+    let finalNickname = nickname;
+    if (!finalNickname && characterId) {
+        try {
+            finalNickname = await fetchCharacterNickname(characterId);
+            console.log(`Fetched nickname for character ${characterId}:`, finalNickname);
+        } catch (error) {
+            console.warn('Failed to fetch nickname, using empty string:', error);
+            finalNickname = '';
+        }
     }
 
     // Build the conversation context with all required parameters
@@ -141,7 +206,7 @@ export const sendChatMessage = async ({
         mood,
         topic,
         additionalDetails,
-        nickname,
+        finalNickname,
         history,
         message
     );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiBase';
+import { sendChatMessage, generateInitialGreeting } from '../utils/aiService';
 import {
     ArrowLeft,
     Phone,
@@ -63,7 +64,7 @@ const CallSetup = () => {
         loadCharacter();
     }, [relationId, navigate]);
 
-    const handleStartCall = (callType) => {
+    const handleStartCall = async (callType) => {
         const callData = {
             mood,
             moodLabel: moodLabels[mood],
@@ -78,20 +79,45 @@ const CallSetup = () => {
         if (callType === 'voice' || callType === 'video') {
             return; // Locked on web
         }
+
+        try {
+            // Generate initial greeting using AI service directly
+            console.log('[CallSetup] Generating initial greeting via AI API...');
+            const initialGreeting = await generateInitialGreeting(
+                character?.character_type || 'Friend',
+                moodLabels[mood],
+                topic,
+                additionalDetails,
+                '', // nickname will be fetched automatically
+                relationId // characterId for nickname fetching
+            );
+
+            // Store the initial greeting in session storage
+            sessionStorage.setItem('initialAIGreeting', initialGreeting);
+            console.log('[CallSetup] Initial greeting generated and stored');
+        } catch (error) {
+            console.error('[CallSetup] Failed to generate initial greeting:', error);
+            // Store a fallback greeting
+            sessionStorage.setItem('initialAIGreeting', 
+                `Hello! I'm so glad you're here. How are you feeling today? 💕`
+            );
+        }
+
+        // Optional: Still call backend for logging/tracking purposes
         axios.post(`${API_BASE_URL}/api/characters/${relationId}/start-call/`, {
             call_type: callType,
             mood: moodLabels[mood],
             topic,
             additional_details: additionalDetails,
             language,
-        }).catch(() => {/* ignore */ }).finally(() => {
-            // Add directMessage=true if there's a message to send
-            const directMessageParam = additionalDetails.trim().length > 0 ? '&directMessage=true' : '';
-            navigate(`/chat/${relationId}?callType=${callType}${directMessageParam}`);
-        });
+        }).catch(() => {/* ignore backend errors */ });
+
+        // Navigate to chat
+        const directMessageParam = additionalDetails.trim().length > 0 ? '&directMessage=true' : '';
+        navigate(`/chat/${relationId}?callType=${callType}${directMessageParam}`);
     };
 
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!additionalDetails.trim()) return;
 
         // Store the message as the first user message and start chat immediately
@@ -106,14 +132,38 @@ const CallSetup = () => {
         };
         sessionStorage.setItem('callPreferences', JSON.stringify(callData));
 
-        // Start the call API in background
+        try {
+            // Send the message directly to AI API
+            console.log('[CallSetup] Sending message directly to AI API...');
+            const aiResponse = await sendChatMessage({
+                message: additionalDetails,
+                relationType: character?.character_type || 'Friend',
+                mood: moodLabels[mood],
+                topic: topic,
+                additionalDetails: '',
+                characterId: relationId, // For automatic nickname fetching
+                history: []
+            });
+
+            // Store the AI response for immediate display in chat
+            sessionStorage.setItem('directMessageResponse', aiResponse);
+            console.log('[CallSetup] AI response received and stored');
+        } catch (error) {
+            console.error('[CallSetup] Failed to get AI response:', error);
+            // Store a fallback response
+            sessionStorage.setItem('directMessageResponse', 
+                "I'm here to listen and support you. Please tell me more about what's on your mind. 💝"
+            );
+        }
+
+        // Optional: Still call backend for logging/tracking purposes
         axios.post(`${API_BASE_URL}/api/characters/${relationId}/start-call/`, {
             call_type: 'chat',
             mood: moodLabels[mood],
             topic,
             additional_details: additionalDetails,
             language,
-        }).catch(() => {/* ignore */ });
+        }).catch(() => {/* ignore backend errors */ });
 
         // Navigate to chat immediately
         navigate(`/chat/${relationId}?callType=chat&directMessage=true`);
@@ -172,8 +222,8 @@ const CallSetup = () => {
                 </div>
 
                 {/* Two blocks: Preferences & Contact (left) and Connection (right) */}
-                <div className={`grid grid-cols-1 gap-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
-                    {/* Left: Preferences & Contact (full width) */}
+                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}>
+                    {/* Left: Preferences & Contact */}
                     <div>
                         <div className="glass-card rounded-2xl p-6 border-2 border-love-400/20 relative overflow-hidden">
                             <h3 className="text-xl font-bold text-white mb-4">Preferences & Contact</h3>
@@ -282,11 +332,11 @@ const CallSetup = () => {
                         </div>
                     </div>
 
-                    {/* Right: Connection (full width) */}
+                    {/* Right: Connection */}
                     <div>
                         <div className="glass-card rounded-2xl p-6 border-2 border-comfort-400/20 h-full flex flex-col">
                             <h3 className="text-xl font-bold text-white mb-4 text-center">Connection</h3>
-                            <div className="space-y-4 mt-2">
+                            <div className="space-y-4 flex-1 flex flex-col justify-center">
                                 {/* Voice Call (locked) */}
                                 <div className="relative opacity-70">
                                     <button

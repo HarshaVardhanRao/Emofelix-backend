@@ -29,6 +29,7 @@ const Chat = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [callPreferences, setCallPreferences] = useState(null);
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
 
     // Parse URL parameters
     const urlParams = new URLSearchParams(location.search);
@@ -62,13 +63,27 @@ const Chat = () => {
         ]);
 
         try {
-            const greeting = await generateInitialGreeting(
-                relationType || 'Friend',
-                mood || 'Neutral',
-                topic || 'General conversation',
-                additionalDetails || '',
-                nickname || ''
-            );
+            let greeting;
+            
+            // Check if we have a pre-generated greeting from CallSetup
+            const preGeneratedGreeting = sessionStorage.getItem('initialAIGreeting');
+            if (preGeneratedGreeting) {
+                console.info('[ExternalAI] Using pre-generated greeting from CallSetup');
+                greeting = preGeneratedGreeting;
+                // Clear the stored greeting so it's only used once
+                sessionStorage.removeItem('initialAIGreeting');
+            } else {
+                // Generate new greeting if none was pre-generated
+                console.info('[ExternalAI] Generating new initial greeting');
+                greeting = await generateInitialGreeting(
+                    relationType || 'Friend',
+                    mood || 'Neutral',
+                    topic || 'General conversation',
+                    additionalDetails || '',
+                    nickname || '',
+                    relationId // characterId for nickname fetching
+                );
+            }
 
             // Replace typing with actual greeting
             setMessages([
@@ -93,7 +108,7 @@ const Chat = () => {
                 }
             ]);
         }
-    }, []);
+    }, [relationId]);
 
     useEffect(() => {
         // Wait for auth token before starting initial greeting
@@ -128,52 +143,70 @@ const Chat = () => {
                         };
                         setMessages([userMessage]);
 
-                        // Start AI response streaming using the same logic as handleSendMessage
-                        const typingMessage = {
-                            id: Date.now() + 1,
-                            content: '',
-                            sender: 'ai',
-                            timestamp: new Date().toISOString(),
-                            typing: true
-                        };
-                        setMessages(prev => [...prev, typingMessage]);
+                        // Check for pre-generated AI response
+                        const preGeneratedResponse = sessionStorage.getItem('directMessageResponse');
+                        if (preGeneratedResponse) {
+                            console.info('[Chat] Using pre-generated AI response from CallSetup');
+                            // Add AI response immediately without typing indicator
+                            setMessages(prev => [...prev, {
+                                id: Date.now() + 1,
+                                content: preGeneratedResponse,
+                                sender: 'ai',
+                                timestamp: new Date().toISOString()
+                            }]);
+                            // Clear the stored response
+                            sessionStorage.removeItem('directMessageResponse');
+                        } else {
+                            console.info('[Chat] No pre-generated response found, generating new one');
+                            
+                            // Start AI response streaming using the same logic as handleSendMessage
+                            const typingMessage = {
+                                id: Date.now() + 1,
+                                content: '',
+                                sender: 'ai',
+                                timestamp: new Date().toISOString(),
+                                typing: true
+                            };
+                            setMessages(prev => [...prev, typingMessage]);
 
-                        // Stream AI response
-                        (async () => {
-                            try {
-                                const historyPayload = [];
+                            // Stream AI response
+                            (async () => {
+                                try {
+                                    const historyPayload = [];
 
-                                const aiResponse = await sendChatMessage({
-                                    message: preferences.additionalDetails,
-                                    relationType: characterData?.character_type || 'Friend',
-                                    mood: preferences?.moodLabel || preferences?.mood || 'Neutral',
-                                    topic: preferences?.topic || 'General conversation',
-                                    additionalDetails: '',
-                                    nickname: user?.first_name || user?.username || '',
-                                    history: historyPayload
-                                });
+                                    const aiResponse = await sendChatMessage({
+                                        message: preferences.additionalDetails,
+                                        relationType: characterData?.character_type || 'Friend',
+                                        mood: preferences?.moodLabel || preferences?.mood || 'Neutral',
+                                        topic: preferences?.topic || 'General conversation',
+                                        additionalDetails: '',
+                                        nickname: user?.first_name || user?.username || '',
+                                        characterId: relationId, // For automatic nickname fetching
+                                        history: historyPayload
+                                    });
 
-                                // Remove typing indicator and add AI response
-                                setMessages(prev => prev.filter(msg => !msg.typing));
-                                setMessages(prev => [...prev, {
-                                    id: Date.now() + 1,
-                                    content: aiResponse,
-                                    sender: 'ai',
-                                    timestamp: new Date().toISOString()
-                                }]);
+                                    // Remove typing indicator and add AI response
+                                    setMessages(prev => prev.filter(msg => !msg.typing));
+                                    setMessages(prev => [...prev, {
+                                        id: Date.now() + 1,
+                                        content: aiResponse,
+                                        sender: 'ai',
+                                        timestamp: new Date().toISOString()
+                                    }]);
 
-                            } catch (error) {
-                                console.error('Streaming error:', error);
-                                setMessages(prev => prev.filter(msg => !msg.typing));
-                                setMessages(prev => [...prev, {
-                                    id: Date.now() + 1,
-                                    content: "I'm sorry my dear, I'm having trouble connecting right now. Please try again. 💕",
-                                    sender: 'ai',
-                                    timestamp: new Date().toISOString(),
-                                    error: true
-                                }]);
-                            }
-                        })();
+                                } catch (error) {
+                                    console.error('Streaming error:', error);
+                                    setMessages(prev => prev.filter(msg => !msg.typing));
+                                    setMessages(prev => [...prev, {
+                                        id: Date.now() + 1,
+                                        content: "I'm sorry my dear, I'm having trouble connecting right now. Please try again. 💕",
+                                        sender: 'ai',
+                                        timestamp: new Date().toISOString(),
+                                        error: true
+                                    }]);
+                                }
+                            })();
+                        }
                     } else {
                         // Normal greeting flow
                         const additional = [preferences?.additionalDetails, preferences?.language ? `Preferred language: ${preferences.language}` : '']
@@ -261,6 +294,7 @@ const Chat = () => {
                 topic: callPreferences?.topic || 'General conversation',
                 additionalDetails: callPreferences?.additionalDetails || '',
                 nickname: user?.first_name || user?.username || '',
+                characterId: relationId, // For automatic nickname fetching
                 history: historyPayload
             });
 
@@ -284,6 +318,10 @@ const Chat = () => {
             }]);
         } finally {
             setSending(false);
+            // Refocus the input field after sending message
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 100);
         }
     };
 
@@ -433,6 +471,7 @@ const Chat = () => {
                 <form onSubmit={handleSendMessage} className="flex items-center space-x-4">
                     <div className="flex-1 relative">
                         <input
+                            ref={inputRef}
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}

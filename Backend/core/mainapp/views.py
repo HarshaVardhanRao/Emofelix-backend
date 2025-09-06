@@ -582,6 +582,25 @@ class StartCharacterCallView(APIView):
             'language': language,
         })
 
+class GetCharacterNicknameView(APIView):
+    """API Endpoint to get the nickname that a character uses for the user."""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, character_id):
+        try:
+            character = get_object_or_404(Character, pk=character_id, user=request.user)
+            return Response({
+                'character_id': character.id,
+                'character_name': character.name,
+                'nickname': character.nickname or '',
+                'character_type': character.character_type
+            })
+        except Character.DoesNotExist:
+            return Response(
+                {'error': 'Character not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
 class ApiNotificationListView(generics.ListAPIView):
     """API Endpoint to list notifications for the user."""
     permission_classes = [IsAuthenticated]
