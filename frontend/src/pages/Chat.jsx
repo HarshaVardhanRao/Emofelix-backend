@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import { API_BASE_URL } from '../apiBase';
-import { sendMessageToExternalAI, buildConversationContext, generateInitialGreeting } from '../utils/aiService';
+import { sendChatMessage, generateInitialGreeting } from '../utils/aiService';
 
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
@@ -141,17 +141,17 @@ const Chat = () => {
                         // Stream AI response
                         (async () => {
                             try {
-                                const messages = buildConversationContext(
-                                    characterData?.character_type || 'Friend',
-                                    preferences?.moodLabel || preferences?.mood || 'Neutral',
-                                    preferences?.topic || 'General conversation',
-                                    '',
-                                    user?.first_name || user?.username || '',
-                                    [],
-                                    preferences.additionalDetails
-                                );
+                                const historyPayload = [];
 
-                                const aiResponse = await sendMessageToExternalAI(messages);
+                                const aiResponse = await sendChatMessage({
+                                    message: preferences.additionalDetails,
+                                    relationType: characterData?.character_type || 'Friend',
+                                    mood: preferences?.moodLabel || preferences?.mood || 'Neutral',
+                                    topic: preferences?.topic || 'General conversation',
+                                    additionalDetails: '',
+                                    nickname: user?.first_name || user?.username || '',
+                                    history: historyPayload
+                                });
 
                                 // Remove typing indicator and add AI response
                                 setMessages(prev => prev.filter(msg => !msg.typing));
@@ -254,17 +254,15 @@ const Chat = () => {
                 content: m.content
             }));
 
-            const aiMessages = buildConversationContext(
-                character?.character_type || 'Friend',
-                callPreferences?.moodLabel || callPreferences?.mood || 'Neutral',
-                callPreferences?.topic || 'General conversation',
-                callPreferences?.additionalDetails || '',
-                user?.first_name || user?.username || '',
-                historyPayload,
-                messageToSend
-            );
-
-            const aiResponse = await sendMessageToExternalAI(aiMessages);
+            const aiResponse = await sendChatMessage({
+                message: messageToSend,
+                relationType: character?.character_type || 'Friend',
+                mood: callPreferences?.moodLabel || callPreferences?.mood || 'Neutral',
+                topic: callPreferences?.topic || 'General conversation',
+                additionalDetails: callPreferences?.additionalDetails || '',
+                nickname: user?.first_name || user?.username || '',
+                history: historyPayload
+            });
 
             // Remove typing indicator and add AI response
             setMessages(prev => prev.filter(msg => !msg.typing));

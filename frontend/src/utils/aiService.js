@@ -61,15 +61,8 @@ export const buildConversationContext = (
     history = [],
     currentMessage = ''
 ) => {
-    // Build system prompt
-    const systemPrompt = `You are role-playing as the user's ${relationType}. Call them ${nickname}. 
-Speak lovingly and supportively, matching the emotional tone requested. 
-User mood: ${mood}. Topic: ${topic}. Nickname of user: ${nickname}. 
-Additional context: ${additionalDetails}. 
-Do NOT break character; refer to the user by their nickname naturally. 
-Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. 
-Keep it short and simple. Don't be extra energized or excited, just be normal and calm. 
-Don't be poetic. Don't beat about the bush.`;
+    // Build system prompt exactly like the backend
+    const systemPrompt = `You are role-playing as the user's ${relationType}. Call him as ${nickname}. Speak lovingly and supportively, matching the emotional tone requested. User mood: ${mood}. Topic: ${topic}. Nickname of user: ${nickname}. Additional context: ${additionalDetails}. Do NOT break character; refer to the user by their nickname naturally. Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. Keep it short and simple. Don't be extra energized or excited, just be normal and calm. Don't be poetic. Don't beat about the bush.`;
 
     // Start with system message
     const messages = [
@@ -112,6 +105,45 @@ export const generateInitialGreeting = async (relationType, mood, topic, additio
         nickname,
         [],
         'Start the conversation with a warm, supportive greeting tailored to the provided context and ask a gentle opening question.'
+    );
+
+    return await sendMessageToExternalAI(messages);
+};
+
+/**
+ * Sends a chat message with all required backend parameters
+ * @param {Object} params - Chat parameters
+ * @param {string} params.message - User message
+ * @param {string} params.relationType - Type of relation (Friend, Mother, etc.)
+ * @param {string} params.mood - User's current mood
+ * @param {string} params.topic - Conversation topic
+ * @param {string} params.additionalDetails - Additional context
+ * @param {string} params.nickname - User's nickname
+ * @param {Array} params.history - Previous conversation messages
+ * @returns {Promise<string>} - AI response
+ */
+export const sendChatMessage = async ({
+    message,
+    relationType = 'Friend',
+    mood = 'Neutral',
+    topic = 'General conversation',
+    additionalDetails = '',
+    nickname = '',
+    history = []
+}) => {
+    if (!message?.trim()) {
+        throw new Error('Message is required');
+    }
+
+    // Build the conversation context with all required parameters
+    const messages = buildConversationContext(
+        relationType,
+        mood,
+        topic,
+        additionalDetails,
+        nickname,
+        history,
+        message
     );
 
     return await sendMessageToExternalAI(messages);

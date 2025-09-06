@@ -2,7 +2,7 @@ import requests
 import json
 
 # API endpoint
-url = "https://df6d54334a9e.ngrok-free.app/v1/chat/completions"
+url = "https://api.guidmenext.com/v1/chat/completions"
 
 # API headers
 headers = {
