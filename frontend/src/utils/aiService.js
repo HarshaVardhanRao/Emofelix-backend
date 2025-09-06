@@ -63,6 +63,7 @@ export const fetchCharacterNickname = async (characterId) => {
         });
 
         if (response.status === 200 && response.data?.nickname !== undefined) {
+            console.log(`Fetched nickname for character ${characterId}:`, response.data.nickname);
             return response.data.nickname || '';
         } else {
             console.warn('Unexpected response format when fetching nickname:', response);
@@ -99,7 +100,7 @@ export const buildConversationContext = (
 ) => {
     // Build system prompt exactly like the backend
     const systemPrompt = `You are role-playing as the user's ${relationType}. Call him as ${nickname} when addressing and not required often. Speak lovingly and supportively, matching the emotional tone requested. Topic: ${topic}. Do NOT break character; refer to the user by their nickname naturally. Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. Keep it short and simple. Don't be extra energized or excited, just be normal and calm. Don't be poetic. Don't beat about the bush.`;
-
+    console.log(systemPrompt)
     // Start with system message
     const messages = [
         { role: "system", content: systemPrompt }
