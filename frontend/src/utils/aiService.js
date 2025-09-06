@@ -82,7 +82,6 @@ export const fetchCharacterNickname = async (characterId) => {
 /**
  * Builds conversation context for the AI model
  * @param {string} relationType - Type of relation (Friend, Mother, etc.)
- * @param {string} mood - User's current mood
  * @param {string} topic - Conversation topic
  * @param {string} additionalDetails - Additional context
  * @param {string} nickname - User's nickname
@@ -92,7 +91,6 @@ export const fetchCharacterNickname = async (characterId) => {
  */
 export const buildConversationContext = (
     relationType,
-    mood,
     topic,
     additionalDetails,
     nickname,
@@ -100,7 +98,7 @@ export const buildConversationContext = (
     currentMessage = ''
 ) => {
     // Build system prompt exactly like the backend
-    const systemPrompt = `You are role-playing as the user's ${relationType}. Call him as ${nickname}. Speak lovingly and supportively, matching the emotional tone requested. User mood: ${mood}. Topic: ${topic}. Nickname of user: ${nickname}. Additional context: ${additionalDetails}. Do NOT break character; refer to the user by their nickname naturally. Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. Keep it short and simple. Don't be extra energized or excited, just be normal and calm. Don't be poetic. Don't beat about the bush.`;
+    const systemPrompt = `You are role-playing as the user's ${relationType}. Call him as ${nickname} when addressing and not required often. Speak lovingly and supportively, matching the emotional tone requested. Topic: ${topic}. Do NOT break character; refer to the user by their nickname naturally. Talk more naturally like human. Don't get too formal and use big sentences like AI Chatbots. Keep it short and simple. Don't be extra energized or excited, just be normal and calm. Don't be poetic. Don't beat about the bush.`;
 
     // Start with system message
     const messages = [
@@ -150,7 +148,6 @@ export const generateInitialGreeting = async (relationType, mood, topic, additio
 
     const messages = buildConversationContext(
         relationType,
-        mood,
         topic,
         additionalDetails,
         finalNickname,
@@ -177,7 +174,6 @@ export const generateInitialGreeting = async (relationType, mood, topic, additio
 export const sendChatMessage = async ({
     message,
     relationType = 'Friend',
-    mood = 'Neutral',
     topic = 'General conversation',
     additionalDetails = '',
     nickname = '',
@@ -203,7 +199,6 @@ export const sendChatMessage = async ({
     // Build the conversation context with all required parameters
     const messages = buildConversationContext(
         relationType,
-        mood,
         topic,
         additionalDetails,
         finalNickname,
