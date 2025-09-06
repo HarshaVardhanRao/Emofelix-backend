@@ -67,6 +67,8 @@ urlpatterns = [
     path('api/relations/<int:relation_id>/start-call/', views.StartCallView.as_view(), name='api-start-call'),
     path('api/characters/<int:character_id>/start-call/', views.StartCharacterCallView.as_view(), name='api-start-character-call'),
     path('api/characters/<int:character_id>/nickname/', views.GetCharacterNicknameView.as_view(), name='api-get-character-nickname'),
+    path('api/characters/<int:character_id>/chat-summary/', views.GetChatSummaryView.as_view(), name='api-get-chat-summary'),
+    path('api/chat/save-summary/', views.SaveChatSummaryView.as_view(), name='api-save-chat-summary'),
     path('api/chat/gemini/stream/', views.GeminiChatStreamView.as_view(), name='api-gemini-chat-stream'),
 
     # Tasks and Rewards API

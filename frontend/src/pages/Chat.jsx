@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import { API_BASE_URL } from '../apiBase';
-import { sendChatMessage, generateInitialGreeting } from '../utils/aiService';
+import { sendChatMessage, generateInitialGreeting, fetchPreviousChatSummary, saveChatSummary, generateChatSummary } from '../utils/aiService';
 
 const Chat = () => {
     const { relationId } = useParams(); // Keep param name for compatibility
@@ -28,6 +28,7 @@ const Chat = () => {
     const [sending, setSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [callPreferences, setCallPreferences] = useState(null);
+    const [previousSummary, setPreviousSummary] = useState('');
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -73,15 +74,20 @@ const Chat = () => {
                 // Clear the stored greeting so it's only used once
                 sessionStorage.removeItem('initialAIGreeting');
             } else {
+                // Fetch previous chat summary for context
+                const summary = await fetchPreviousChatSummary(relationId);
+                setPreviousSummary(summary || '');
+
                 // Generate new greeting if none was pre-generated
-                console.info('[ExternalAI] Generating new initial greeting');
+                console.info('[ExternalAI] Generating new initial greeting with previous summary');
                 greeting = await generateInitialGreeting(
                     relationType || 'Friend',
                     mood || 'Neutral',
                     topic || 'General conversation',
                     additionalDetails || '',
                     nickname || '',
-                    relationId // characterId for nickname fetching
+                    relationId, // characterId for nickname fetching
+                    summary || '' // previous chat summary
                 );
             }
 
@@ -295,17 +301,41 @@ const Chat = () => {
                 additionalDetails: callPreferences?.additionalDetails || '',
                 nickname: user?.first_name || user?.username || '',
                 characterId: relationId, // For automatic nickname fetching
-                history: historyPayload
+                history: historyPayload,
+                previousSummary: previousSummary // Include previous conversation summary
             });
 
             // Remove typing indicator and add AI response
             setMessages(prev => prev.filter(msg => !msg.typing));
-            setMessages(prev => [...prev, {
+            const aiMessage = {
                 id: Date.now() + 2,
                 content: aiResponse,
                 sender: 'ai',
                 timestamp: new Date().toISOString()
-            }]);
+            };
+            setMessages(prev => [...prev, aiMessage]);
+
+            // Generate and save conversation summary after AI response
+            try {
+                const updatedMessages = [...messages, userMessage, aiMessage];
+                const summary = await generateChatSummary(
+                    updatedMessages,
+                    character?.character_type || 'Friend',
+                    user?.first_name || user?.username || 'User'
+                );
+
+                if (summary) {
+                    const saved = await saveChatSummary(relationId, summary);
+                    if (saved) {
+                        console.log('Chat summary saved successfully');
+                        setPreviousSummary(summary); // Update current summary for next conversation
+                    }
+                }
+            } catch (summaryError) {
+                console.error('Failed to generate or save chat summary:', summaryError);
+                // Continue without breaking the chat flow
+            }
+
         } catch (error) {
             console.error('Failed to send message:', error);
             setMessages(prev => prev.filter(msg => !msg.typing));

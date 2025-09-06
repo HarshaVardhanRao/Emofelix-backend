@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiBase';
-import { sendChatMessage, generateInitialGreeting } from '../utils/aiService';
+import { sendChatMessage, generateInitialGreeting, fetchPreviousChatSummary } from '../utils/aiService';
 import {
     ArrowLeft,
     Phone,
@@ -81,6 +81,9 @@ const CallSetup = () => {
         }
 
         try {
+            // Fetch previous chat summary for context
+            const previousSummary = await fetchPreviousChatSummary(relationId);
+
             // Generate initial greeting using AI service directly
             console.log('[CallSetup] Generating initial greeting via AI API...');
             const initialGreeting = await generateInitialGreeting(
@@ -89,7 +92,8 @@ const CallSetup = () => {
                 topic,
                 additionalDetails,
                 '', // nickname will be fetched automatically
-                relationId // characterId for nickname fetching
+                relationId, // characterId for nickname fetching
+                previousSummary || '' // previous chat summary
             );
 
             // Store the initial greeting in session storage
@@ -133,6 +137,9 @@ const CallSetup = () => {
         sessionStorage.setItem('callPreferences', JSON.stringify(callData));
 
         try {
+            // Fetch previous chat summary for context
+            const previousSummary = await fetchPreviousChatSummary(relationId);
+
             // Send the message directly to AI API
             console.log('[CallSetup] Sending message directly to AI API...');
             const aiResponse = await sendChatMessage({
@@ -142,7 +149,8 @@ const CallSetup = () => {
                 topic: topic,
                 additionalDetails: '',
                 characterId: relationId, // For automatic nickname fetching
-                history: []
+                history: [],
+                previousSummary: previousSummary || '' // Include previous conversation summary
             });
 
             // Store the AI response for immediate display in chat

@@ -1123,3 +1123,108 @@ def ProfileCountView(request):
     relation_count = Relation.objects.filter(user=user).count()
     user_chats = ChatHistory.objects.filter(user=user).count()
     return JsonResponse({"relation_count": relation_count, "user_chats": user_chats})
+
+
+# -------------------------------
+# Chat Summary API Views
+# -------------------------------
+class SaveChatSummaryView(APIView):
+    """Save chat summary for a character conversation"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            character_id = request.data.get('character_id')
+            summary = request.data.get('summary')
+            
+            if not character_id or not summary:
+                return Response({
+                    'error': 'character_id and summary are required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Get the character and verify ownership
+            try:
+                character = Character.objects.get(id=character_id, user=request.user)
+            except Character.DoesNotExist:
+                return Response({
+                    'error': 'Character not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # For now, we'll create a Relation if it doesn't exist to maintain compatibility with ChatHistory model
+            relation, created = Relation.objects.get_or_create(
+                user=request.user,
+                name=character.name,
+                relation_type=character.character_type,
+                defaults={
+                    'emotion_model': 'default',
+                    'voice_model': 'default'
+                }
+            )
+            
+            # Save the chat summary
+            chat_history = ChatHistory.objects.create(
+                user=request.user,
+                relation=relation,
+                summary=summary
+            )
+            
+            return Response({
+                'success': True,
+                'chat_history_id': chat_history.id
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to save chat summary: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetChatSummaryView(APIView):
+    """Get the most recent chat summary for a character"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, character_id):
+        try:
+            # Get the character and verify ownership
+            try:
+                character = Character.objects.get(id=character_id, user=request.user)
+            except Character.DoesNotExist:
+                return Response({
+                    'error': 'Character not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+            
+            # Find the corresponding relation
+            try:
+                relation = Relation.objects.get(
+                    user=request.user,
+                    name=character.name,
+                    relation_type=character.character_type
+                )
+                
+                # Get the most recent chat summary
+                latest_chat = ChatHistory.objects.filter(
+                    user=request.user,
+                    relation=relation
+                ).order_by('-timestamp').first()
+                
+                if latest_chat:
+                    return Response({
+                        'summary': latest_chat.summary,
+                        'timestamp': latest_chat.timestamp
+                    })
+                else:
+                    return Response({
+                        'summary': None,
+                        'message': 'No previous chat history found'
+                    })
+                    
+            except Relation.DoesNotExist:
+                return Response({
+                    'summary': None,
+                    'message': 'No previous chat history found'
+                })
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to retrieve chat summary: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
